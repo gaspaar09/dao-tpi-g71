@@ -108,6 +108,7 @@ Cada carpeta de código lleva un `__init__.py` vacío.
 - **Ojo con el ejemplo de los apuntes:** `new_value.isnumeric() and int(new_value) >= 0` rechaza la cadena vacía y el usuario no puede borrar el campo. La validación en vivo debe aceptar `""`; la verificación estricta ocurre al enviar.
 - Fechas ingresadas: `Entry` en formato dd/mm/aaaa (como el ejercicio 4). Siempre que se pueda, las fechas las pone el sistema.
 - **Usuarios** (de la propuesta): el personal opera los procesos; los socios consultan disponibilidad y catálogo, para lo cual hay una pestaña de consulta. La autenticación está fuera de alcance.
+- **Empleado actual.** No hay login: arriba de la ventana principal un `Combobox` de empleado actual define quién registra los `MovimientoRemito` y las demás operaciones. Mientras no haya uno elegido, las operaciones se bloquean con un mensaje.
 
 ## Patrones de diseño (exactamente dos)
 Se aplican **State** y **Strategy**, siguiendo el capítulo "Patrones State y Strategy" de los apuntes. **No implementar Singleton, Observer ni Factory Method.** (DAO y Unit of Work son organización del acceso a datos, no son los patrones declarados.)
@@ -128,28 +129,36 @@ Se aplican **State** y **Strategy**, siguiendo el capítulo "Patrones State y St
 
 - Cada cambio crea un `MovimientoRemito` (fecha-hora, estado anterior, estado nuevo, empleado, observación). El remito nace con su primer movimiento (EMPAQUETADO).
 - Devolver un préstamo interbibliotecario genera un remito `DEVOLUCION` hacia la sede propietaria.
-- **Efectos colaterales (confirmados por el grupo):** DESPACHADO → `fecha_despacho` = hoy y ejemplares EN_TRANSITO. RECIBIDO → `fecha_recepcion` = hoy; si es IDA, el préstamo pasa a ACTIVO; si es DEVOLUCION, los ejemplares quedan DISPONIBLE y el préstamo DEVUELTO. CANCELADO → ejemplares DISPONIBLE y préstamo CANCELADO. EXTRAVIADO → ejemplares EXTRAVIADO y se crea una `IncidenciaEnvio` de tipo EXTRAVIO.
+- **Efectos colaterales (confirmados por el grupo):** DESPACHADO → `fecha_despacho` = hoy y ejemplares EN_TRANSITO. RECIBIDO → `fecha_recepcion` = hoy; si es IDA, el préstamo pasa a ACTIVO (con `fecha_prestamo` = hoy y el vencimiento calculado por la estrategia); si es DEVOLUCION, los ejemplares quedan DISPONIBLE (el préstamo ya quedó DEVUELTO cuando el socio devolvió). CANCELADO → ejemplares DISPONIBLE y préstamo CANCELADO. EXTRAVIADO → ejemplares EXTRAVIADO, se crea una `IncidenciaEnvio` de tipo EXTRAVIO y, si es IDA, el préstamo pasa a CANCELADO.
 
 ### Strategy — plazo y multa según el tipo de préstamo
 - `patrones/estrategia_prestamo.py`: `EstrategiaPrestamo(ABC)` con `calcular_vencimiento(fecha_prestamo)` y `calcular_multa(dias_atraso)` abstractos, y las implementaciones `EstrategiaPrestamoLocal` y `EstrategiaPrestamoInterbibliotecario`.
-- Selección **externa**, como enseñan los apuntes (el contexto no elige): un diccionario `ESTRATEGIAS = {TipoPrestamo.LOCAL: ..., TipoPrestamo.INTERBIBLIOTECARIO: ...}` que usa `PrestamoDAO` al registrar y al calcular la multa.
-- El usuario **nunca ingresa** el vencimiento: lo calcula la estrategia.
-- Valores confirmados por el grupo, en `config.py`: Local 14 días y $100 por día de atraso; Interbibliotecario 21 días y $150 por día. Montos con `Float` y `round(x, 2)`.
-- `dias_atraso = max(0, (fecha_devolucion - fecha_vencimiento).days)`; si es 0 no se genera multa.
+- Selección **externa**, como enseñan los apuntes (el contexto no elige): un diccionario `ESTRATEGIAS = {TipoPrestamo.LOCAL: ..., TipoPrestamo.INTERBIBLIOTECARIO: ...}` que usa `PrestamoDAO` al activar el préstamo (para calcular el vencimiento) y al calcular la multa.
+- El usuario **nunca ingresa** el vencimiento: lo calcula la estrategia. `fecha_prestamo` y `fecha_vencimiento` se fijan **cuando el préstamo pasa a ACTIVO** (en el interbibliotecario, al recibirse el remito de ida), para que el tránsito no consuma el plazo.
+- Valores confirmados por el grupo, en `config.py`: Local 31 días y $100 por día de atraso; Interbibliotecario 38 días y $150 por día. Montos con `Float` y `round(x, 2)`.
+- `dias_atraso = max(0, (fecha_devolucion - fecha_vencimiento).days)`, con `fecha_devolucion` = el día en que el **socio** devolvió (no la fecha del remito de vuelta); si es 0 no se genera multa.
 
 ### Estado del Préstamo (sin patrón)
-Constantes de texto + un diccionario de transiciones permitidas validado en `PrestamoDAO` (confirmado por el grupo): SOLICITADO→{APROBADO, CANCELADO}; APROBADO→{EN_ENVIO (interbibliotecario), ACTIVO (local), CANCELADO}; EN_ENVIO→{ACTIVO, CANCELADO}; ACTIVO→{VENCIDO, DEVUELTO}; VENCIDO→{DEVUELTO}.
+Constantes de texto + un diccionario de transiciones permitidas validado en `PrestamoDAO` (confirmado por el grupo): SOLICITADO→{APROBADO, CANCELADO}; APROBADO→{EN_ENVIO (interbibliotecario), ACTIVO (local), CANCELADO}; EN_ENVIO→{ACTIVO, CANCELADO}; ACTIVO→{DEVUELTO}.
+
+- **VENCIDO no se guarda.** En la base el préstamo sigue ACTIVO y un `@property` (`estado_efectivo`, como `esta_vencido` en los apuntes) devuelve VENCIDO si está ACTIVO y `fecha_vencimiento < hoy`. Los reportes filtran `estado == ACTIVO` con vencimiento anterior a hoy. Un préstamo vencido se devuelve igual que uno vigente.
+- **Reserva del ejemplar.** Al pasar a APROBADO el ejemplar queda RESERVADO (así dos préstamos aprobados no pueden pedir el mismo); pasa a PRESTADO cuando el préstamo se activa; si se cancela, vuelve a DISPONIBLE.
+- **Cancelación.** Desde SOLICITADO o APROBADO no hay remito: solo se libera el ejemplar. Desde EN_ENVIO solo se permite si el remito sigue EMPAQUETADO, y se cancela junto con el remito; si ya fue despachado o está en tránsito, se rechaza con `ReglaNegocioError`.
+- **Devolución.** Al registrarla, el préstamo pasa a DEVUELTO ese día y se calcula la multa con esa fecha. Si es interbibliotecario, además se crea el remito DEVOLUCION; el ejemplar no vuelve a estar DISPONIBLE hasta que ese remito se recibe en la sede propietaria (pasa a EN_TRANSITO al despacharse).
 
 ## Reglas de negocio (obligatorias)
 - No prestar ejemplares que no estén DISPONIBLE.
 - No prestar a socios que no estén ACTIVO (inhabilitados o de baja).
-- Controlar vencimientos: un préstamo ACTIVO pasado de `fecha_vencimiento` se considera VENCIDO (se calcula al consultar, con un `@property` como `esta_vencido` en los apuntes).
+- Controlar vencimientos: un préstamo ACTIVO pasado de `fecha_vencimiento` se considera VENCIDO (se calcula al consultar y **no se guarda**, con un `@property` como `esta_vencido` en los apuntes).
 - No prestar un ejemplar cuya sede no sea la `sede_origen` del préstamo.
 - No iniciar préstamos, reservas ni envíos desde o hacia una sede dada de BAJA.
 - Préstamo LOCAL: `sede_origen == sede_destino`. INTERBIBLIOTECARIO: `sede_origen != sede_destino`.
-- Evitar duplicados: socios (DNI y `nro_socio`), catálogo (ISBN) y ejemplares (`codigo_inventario`).
+- Evitar duplicados: socios (DNI y `nro_socio`), catálogo (ISBN o ISSN) y ejemplares (`codigo_inventario`).
+- `codigo_inventario` lo ingresa el personal (es el código impreso del ejemplar), es obligatorio y único: es lo que permite detectar la carga doble de un mismo ejemplar físico. El proceso opcional de inventario (escaneo, auditorías) queda fuera de alcance. El campo `isbn` acepta ISBN (10 o 13) e ISSN (8), porque el catálogo incluye revistas y material de consulta.
 - Trazabilidad del remito: cada cambio de estado deja un `MovimientoRemito`; las transiciones no permitidas se rechazan. Un remito puede agrupar varios ejemplares entre el mismo par de sedes.
 - Reserva sobre un título y una sede de retiro; cuando queda un ejemplar disponible se asigna (ejemplar RESERVADO, reserva DISPONIBLE). Estados: PENDIENTE → DISPONIBLE → CUMPLIDA / CANCELADA / VENCIDA.
+- Plazos de la reserva (confirmados, constantes en `config.py`): una reserva PENDIENTE espera **45 días** a que se libere un ejemplar; al pasar a DISPONIBLE el socio tiene **2 días** para retirarlo (al asignar el ejemplar, `fecha_vencimiento` se reescribe como hoy + 2 días).
+- Una reserva vencida (en cualquiera de las dos etapas) pasa a VENCIDA; si tenía ejemplar asignado, este se libera y se le asigna a la siguiente reserva PENDIENTE del mismo título y sede. Como esto **modifica datos**, el estado sí se guarda: `ReservaDAO.procesar_vencimientos()` se ejecuta al abrir la app y al abrir las pestañas de Reservas y de Consulta de disponibilidad.
 - Devolución: registra `estado_fisico`; DANADO o DESTRUIDO deja el ejemplar fuera de circulación (DANADO / BAJA) y exige observaciones.
 - Cada ejemplar pertenece a una única sede. La disponibilidad se controla sobre el ejemplar, no sobre el libro (a diferencia del contador `ejemplares_disponibles` del ejemplo de los apuntes).
 
@@ -159,6 +168,7 @@ Detalle por campo en `docs/VALIDACIONES.md`. Principios:
 2. Primero formato (`ValidacionError`), después reglas de negocio (`ReglaNegocioError`).
 3. Defensa en profundidad: `UNIQUE`, `NOT NULL` y `nullable=False` también en las columnas.
 4. Mensajes en español y concretos: "El DNI debe tener 7 u 8 dígitos", no "valor inválido".
+5. **Normalizar antes de comparar duplicados.** `unique=True` en SQLite distingue mayúsculas y espacios, así que el DAO normaliza (`strip`, minúsculas, ISBN sin guiones, DNI solo dígitos) y consulta antes de insertar; la restricción `unique` queda como red de seguridad.
 
 ## Convenciones de código
 - PEP 8, `snake_case` para atributos y funciones (`id_sede`, `fecha_vencimiento`) y `PascalCase` para clases. El paso desde el camelCase del diagrama es mecánico. Anotaciones simples como las de los apuntes (`peso_kg: float`), sin importar `typing`.
@@ -189,7 +199,7 @@ Cada uno como función en `reportes/`: consulta con `session.query` y relaciones
 3. **ABM:** sedes (con horarios), empleados, socios, autores y categorías, libros y ejemplares, con sus DAO y pestañas.
 4. **Préstamos** + Strategy (vencimiento y multas).
 5. **Remitos** + State (empaquetar, despachar, recibir, cancelar, extraviar, incidencias, historial).
-6. **Reservas y devoluciones** (incluye el remito de devolución y la multa).
+6. **Reservas y devoluciones** (incluye el remito de devolución, la multa y `procesar_vencimientos()` de reservas).
 7. **Consulta de disponibilidad y reportes.**
 8. **Pasada completa por el checklist de validaciones** y ensayo de la defensa (guion de `docs/VALIDACIONES.md`).
 

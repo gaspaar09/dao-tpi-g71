@@ -11,7 +11,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
    - *Al enviar:* la UI llama al DAO y muestra los errores con `messagebox.showerror`.
    - **El DAO valida todo otra vez con `validadores.py`.** Esa es la fuente de verdad y permite probar sin interfaz.
    - *Base de datos:* `unique=True`, `nullable=False`.
-2. **Normalizar antes de validar:** `strip()`, espacios repetidos, DNI sin puntos (se quitan y se guardan solo los dígitos).
+2. **Normalizar antes de validar:** `strip()`, espacios repetidos, DNI sin puntos (se quitan y se guardan solo los dígitos). Para los campos únicos (nombre de sede, DNI, ISBN/ISSN, código de inventario) el DAO compara el valor normalizado, porque `unique=True` en SQLite distingue mayúsculas.
 3. **Helpers en `validadores.py`** (lanzan `ValidacionError` con el nombre del campo y un mensaje claro): texto obligatorio con largo máximo, solo letras, entero positivo, número no negativo, fecha dd/mm/aaaa, email, teléfono, valor perteneciente a una lista de constantes, existencia de una entidad por id.
 4. Primero formato → `ValidacionError`. Después reglas de negocio → `ReglaNegocioError`. Transición de estado inválida → `TransicionInvalidaError`.
 5. Si el sistema puede generar un dato (fechas de alta, solicitud, despacho; `nro_remito`; vencimientos; multas), **no se le pide al usuario**.
@@ -64,7 +64,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 ### Libro, Autor, Categoría
 | Campo | Regla |
 |---|---|
-| isbn | 10 o 13 caracteres tras quitar guiones y espacios (ISBN-10 puede terminar en `X`); único. Validar el dígito verificador es un plus |
+| isbn (ISBN o ISSN) | Tras quitar guiones y espacios debe tener 8 (ISSN), 10 o 13 caracteres; todos dígitos salvo que ISSN e ISBN-10 pueden terminar en `X`; único. Validar el dígito verificador es un plus |
 | titulo | Obligatorio, hasta 150 |
 | editorial, idioma | Obligatorios, hasta 80 y 30 |
 | anio_edicion | Entero entre 1450 y el año actual |
@@ -74,7 +74,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 | Autor | nombre y apellido solo letras; duplicado = mismo nombre y apellido normalizados |
 | Categoría | nombre obligatorio, único |
 
-*Pregunta abierta:* las revistas usan ISSN, no ISBN. Decidir si el campo `isbn` acepta ambos.
+*Decidido:* el campo `isbn` acepta ISBN (10 o 13) e ISSN (8), porque el catálogo incluye revistas y otros materiales de consulta.
 
 ### Ejemplar
 `codigo_inventario` obligatorio, único, 3–20 caracteres entre mayúsculas, dígitos y guiones. `libro` y `sede` existentes y la sede ACTIVA. Estado inicial DISPONIBLE. `estado_fisico` ∈ `EstadoFisico`. No dar de baja un ejemplar PRESTADO, RESERVADO o EN_TRANSITO.
@@ -83,14 +83,16 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 - Socio existente y ACTIVO. Ejemplar existente y DISPONIBLE.
 - `ejemplar.sede == sede_origen`. Ambas sedes existentes y ACTIVAS.
 - LOCAL → `origen == destino`. INTERBIBLIOTECARIO → `origen != destino`.
-- `fecha_solicitud` = hoy (sistema). `fecha_prestamo` ≥ `fecha_solicitud` y no pasada. `fecha_vencimiento` la calcula la estrategia y siempre es posterior a `fecha_prestamo`.
-- Transiciones de estado solo las permitidas.
+- `fecha_solicitud` = hoy (sistema). `fecha_prestamo` y `fecha_vencimiento` las fija el sistema cuando el préstamo pasa a ACTIVO; el vencimiento lo calcula la estrategia (31 días local, 38 interbibliotecario) y es siempre posterior a `fecha_prestamo`. El usuario no las ingresa.
+- Transiciones de estado solo las permitidas. VENCIDO no se guarda: se calcula.
+- Al aprobar, el ejemplar debe seguir DISPONIBLE y pasa a RESERVADO; al cancelar vuelve a DISPONIBLE.
+- Cancelar desde EN_ENVIO solo si el remito está EMPAQUETADO; si ya fue despachado o está en tránsito, se rechaza.
 
 ### Reserva
-Socio ACTIVO. Libro existente. `sede_retiro` ACTIVA. `fecha_reserva` = hoy. `fecha_vencimiento` futura, calculada. No duplicar una reserva PENDIENTE/DISPONIBLE del mismo socio y libro *(supuesto)*. Cancelar solo si está PENDIENTE o DISPONIBLE.
+Socio ACTIVO. Libro existente. `sede_retiro` ACTIVA. `fecha_reserva` = hoy. `fecha_vencimiento` la calcula el sistema: hoy + 45 días mientras está PENDIENTE; al asignarle un ejemplar se reescribe como hoy + 2 días (plazo de retiro). No duplicar una reserva PENDIENTE/DISPONIBLE del mismo socio y libro *(supuesto)*. Cancelar solo si está PENDIENTE o DISPONIBLE.
 
 ### Devolución y multa
-- El préstamo debe estar ACTIVO o VENCIDO (no se devuelve dos veces).
+- El préstamo debe estar ACTIVO (vencido o no, porque VENCIDO no se guarda); no se devuelve dos veces. Si es interbibliotecario, se crea el remito DEVOLUCION.
 - `fecha_devolucion` no futura y ≥ `fecha_prestamo`.
 - `estado_fisico` ∈ `EstadoFisico`. `observaciones` hasta 300; **obligatorias** si es DANADO o DESTRUIDO.
 - Multa: la calcula el sistema; `dias_atraso` entero ≥ 0, `monto` ≥ 0 con 2 decimales; estado solo PENDIENTE → PAGADA.
@@ -98,7 +100,7 @@ Socio ACTIVO. Libro existente. `sede_retiro` ACTIVA. `fecha_reserva` = hoy. `fec
 ### Remito, movimientos e incidencias
 - `nro_remito` lo genera el sistema (único, p. ej. `REM-000001`).
 - `sede_origen != sede_destino`, ambas ACTIVAS.
-- Al menos un ítem; cada ejemplar asociado a un préstamo en estado correcto (APROBADO para IDA; ACTIVO o VENCIDO para DEVOLUCION) y que no esté en otro remito abierto.
+- Al menos un ítem; cada ejemplar asociado a un préstamo en estado correcto (APROBADO para IDA; para DEVOLUCION, un préstamo interbibliotecario ya DEVUELTO cuyo ejemplar todavía no volvió a su sede) y que no esté en otro remito abierto.
 - Transición inválida (p. ej. cancelar un remito DESPACHADO) → `TransicionInvalidaError`.
 - Movimiento: empleado obligatorio y existente; observación hasta 200, obligatoria al cancelar o dar por extraviado.
 - Incidencia: `tipo` ∈ `TipoIncidencia`; `fecha` no futura y ≥ `fecha_creacion` del remito; descripción 5–300.
@@ -114,3 +116,5 @@ Socio ACTIVO. Libro existente. `sede_retiro` ACTIVA. `fecha_reserva` = hoy. `fec
 8. Remito: cancelar uno ya DESPACHADO, saltar de EMPAQUETADO a RECIBIDO, extraviar uno que no está EN_TRANSITO.
 9. Reserva sobre sede de baja; segunda reserva idéntica.
 10. En cada formulario: escribir letras en un campo numérico, pegar texto con Ctrl+V y apretar el botón de enviar dos veces seguidas.
+11. Cancelar un préstamo EN_ENVIO cuyo remito ya está DESPACHADO; dejar una reserva PENDIENTE pasada su espera y ver que queda VENCIDA y libera el ejemplar.
+12. Intentar operar sin elegir el empleado actual.
