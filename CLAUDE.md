@@ -1,0 +1,197 @@
+# TP Integrador DAO — Biblioteca: Sistema de Préstamos Interbibliotecarios
+
+UTN-FRC · Desarrollo de Aplicaciones con Objetos · Grupo 71 · Tema 1 (Biblioteca).
+El TP se **defiende oralmente, con código**, y los profes prueban todos los campos con datos inválidos (negativos, letras en campos numéricos, fechas pasadas, vacíos, duplicados, etc.).
+Respondé siempre en español.
+
+## Regla principal: implementar solo con lo visto en clase
+`docs/APUNTES.md` reúne todo lo que se dio durante el año y es la **referencia obligatoria de cómo se implementa**. El grupo tiene que poder justificar cada línea del TP con algo visto en clase.
+
+1. Antes de implementar cada parte, buscá en `APUNTES.md` cómo se hizo ahí y copiá ese estilo. **No lo leas entero** (pesa ~370 KB): usá grep por título (tabla de abajo).
+2. No uses otra librería, sintaxis o técnica si existe una equivalente en los apuntes.
+3. Si algo es *realmente necesario* y no está en los apuntes: **pará y preguntá**, explicando por qué es necesario y qué alternativa vista descartaste. No lo agregues en silencio.
+4. Al terminar cada fase, listá qué capítulos de los apuntes usaste y dónde, para que el grupo prepare la defensa.
+
+**Modelo a seguir:** el capítulo "ORM con SQLAlchemy", sección *Ejemplo completo: Sistema de biblioteca*. Tiene modelos con `declarative_base`, un DAO por entidad, `obtener_session()` como context manager, reglas de negocio con excepciones y la interacción con el usuario separada del acceso a datos.
+
+### Dónde buscar en APUNTES.md (títulos para grep)
+| Tema | Título |
+|---|---|
+| Excepciones propias (`class X(Exception)`) | "Excepciones definidas por el programador" |
+| Clases, propiedades, `__str__` | "Encapsulamiento", "Propiedades", "Métodos mágicos" |
+| Composición, herencia, clases abstractas | "Composición", "Herencia", "Polimorfismo", "Clases y métodos abstractos" |
+| Tests | "Testing unitario", "Pytest" |
+| Acceso a datos | "Patrón DAO", "ORM con SQLAlchemy", "Relaciones entre tablas", "Context managers y gestión de sesiones" |
+| State y Strategy | "Patrones State y Strategy" |
+| Interfaz gráfica | "Interfaces graficas en python", "Validar texto", "Eventos en Tkinter", "Clase TTK" y los ejercicios de formularios del final |
+
+### No visto en clase → qué usar en cambio
+| No usar | Usar |
+|---|---|
+| Flask / web | Tkinter + ttk |
+| `enum.Enum` | Clases de constantes de texto (`class EstadoRemito: EMPAQUETADO = "EMPAQUETADO"`) y columnas `String`, como `estado = Column(String(20))` en los apuntes |
+| `Decimal` | `Float` + `round(x, 2)` |
+| `re` (regex) | Métodos de `str` (`strip`, `split`, `replace`, `isalpha`, `isnumeric`, `in`, `len`) y `try: int(...) except ValueError` |
+| SQLAlchemy 2.0 (`Mapped[]`, `DeclarativeBase`, `select()`) | `declarative_base()`, `Column`, `session.query()` (estilo clásico de los apuntes) |
+| `func.count`, `group_by` | Traer filas con `query` y relaciones, y agrupar en Python con diccionarios, `sorted(..., key=lambda ...)`, `sum`, `len` |
+| `strptime` | `date(anio, mes, dia)` armado con `split("/")`; lanza `ValueError` en fechas imposibles como 30/02 |
+| `dataclasses`, `typing` | Clases normales |
+| `pytest.mark.parametrize`, fixtures | Clases `TestXxx`, bucles `for` con `pytest.raises` y funciones auxiliares |
+| `unittest`, `mock` | Solo `pytest` |
+| `Toplevel`, `StringVar`, `tkcalendar`, `customtkinter` | Un `ttk.Notebook` con pestañas, `entry.get()`, fechas como `Entry` en formato dd/mm/aaaa |
+| `logging`, `os`, `pathlib`, `argparse` | No usar |
+
+### Excepciones ya aprobadas (necesarias y mínimas)
+- `foreign_keys=[...]` en `relationship()` cuando una clase tiene dos claves foráneas a `Sede` (`sede_origen` y `sede_destino`): SQLAlchemy lo exige. Dejar un comentario en el código.
+- `tkinter.messagebox` para los cuadros de diálogo (los ejercicios de formularios de los apuntes piden "cuadro de diálogo" y "ventana emergente").
+- `ttk.Combobox(..., state="readonly")`: es una opción del widget visto y evita texto libre en los desplegables.
+- Módulos que sí aparecen en los apuntes: `contextlib.contextmanager`, `abc`, `datetime` (`date`, `datetime`, `time`, `timedelta`).
+
+## Cómo trabajar en este repo
+- Cada integrante tiene que **entender y poder explicar** todo el código. Priorizá código simple y claro sobre código "ingenioso". Nada de abstracciones que el enunciado no pide.
+- Trabajá **por fases** (ver "Plan de trabajo"). Al terminar cada una: resumen corto de qué hiciste y por qué, qué probar a mano y qué supuestos tomaste. No pases a la fase siguiente sin que el usuario lo confirme.
+- Si el enunciado, la propuesta y el diagrama se contradicen, o falta un dato de negocio: **preguntá**, no decidas solo.
+- Comentarios y docstrings en español, breves, explicando el *por qué* (estilo de los apuntes).
+- No hagas commit ni push salvo que te lo pidan. Cuando te lo pidan: commits en español, formato Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`).
+
+## Fuentes de verdad
+Orden de precedencia: `TPI_ENUNCIADO.md` > este archivo > `diagrama-clases.mmd` > `PROPUESTA.md`.
+
+| Archivo | Para qué |
+|---|---|
+| `docs/TPI_ENUNCIADO.md` | Consigna oficial: procesos obligatorios, validaciones, reportes, mínimo 2 patrones y 4 reportes. |
+| `docs/PROPUESTA.md` | Propuesta del grupo: objetivos, alcances, ciclo de vida del remito, supuestos, enumeraciones y notas del modelo. **Leela completa antes de empezar** (es corta). Está actualizada con las decisiones de este archivo. |
+| `docs/diagrama-clases.mmd` (+ `.png`) | **Modelo de clases vigente** (dominio, enumeraciones y patrones). |
+| `docs/TP-Biblioteca-Propuesta.pdf` | PDF original de la propuesta. |
+| `docs/VALIDACIONES.md` | Checklist de validaciones por entidad. **Leelo antes de escribir DAOs, validadores o formularios.** |
+| `docs/APUNTES.md` | Apuntes de la cátedra: ver "Regla principal". |
+
+## Stack
+- **Python 3.10+**, entorno virtual `.venv`. `requirements.txt`: `sqlalchemy`, `pytest`.
+- **Persistencia:** SQLite + SQLAlchemy ORM, estilo clásico de los apuntes.
+- **Interfaz:** Tkinter + ttk, de escritorio.
+- **Tests:** pytest. Ejecutar con `python -m pytest` desde la raíz, así encuentra los módulos del proyecto.
+- Se ejecuta con `python main.py`.
+
+## Arquitectura
+```
+main.py                  # crea las tablas y abre la ventana principal (como el main() del ejemplo de biblioteca)
+config.py                # constantes: DB_URL, plazos y multas, largos máximos
+database.py              # engine, Base, Session, obtener_session(), crear_tablas()
+constantes.py            # "enumeraciones" del diagrama como clases de constantes de texto
+excepciones.py           # ValidacionError, ReglaNegocioError, TransicionInvalidaError
+validadores.py           # funciones de validación de formato: texto, números, fechas, email, teléfono, etc.
+modelos/                 # entidades SQLAlchemy (una clase por entidad del diagrama)
+patrones/
+  estado_remito.py       # State
+  estrategia_prestamo.py # Strategy
+dao/                     # un DAO por entidad principal: CRUD + reglas de negocio
+reportes/                # una función por reporte
+ui/                      # ventana principal con ttk.Notebook y un Frame por módulo
+tests/
+docs/
+```
+Cada carpeta de código lleva un `__init__.py` vacío.
+
+**Capas: `ui → dao → modelos`.**
+- Los DAO **no** usan `input`/`print` ni importan `tkinter` (los apuntes: "No interactúan con el usuario"). Devuelven objetos (`obtener_por_...`) o diccionarios "listos para mostrar", materializados dentro de la sesión para evitar `DetachedInstanceError`. La sesión se crea con `expire_on_commit=False`, igual que en los apuntes.
+- Las reglas de negocio viven en los DAO (como `PrestamoDAO.registrar` en el ejemplo) y en métodos o `@property` de los modelos (como `esta_vencido`).
+- Los DAO validan **siempre** con `validadores.py` antes de tocar la base: así el backend es la fuente de verdad y se puede probar sin interfaz.
+- La UI solo captura `ValidacionError` y `ReglaNegocioError`, y muestra el mensaje.
+- Excepciones propias definidas como en los apuntes: heredan de `Exception`, con `__init__(self, mensaje)` y `super().__init__(mensaje)`. `TransicionInvalidaError` hereda de `ReglaNegocioError`.
+- Para tests, `database.py` permite apuntar a `sqlite:///:memory:` (aparece en los apuntes).
+
+## Interfaz (Tkinter + ttk)
+- `main.py` crea `tk.Tk()`, aplica `ttk.Style().theme_use("clam")` y arma un `ttk.Notebook` con una pestaña por módulo: Sedes, Empleados, Socios, Catálogo (libros, autores, categorías), Ejemplares, Préstamos, Reservas, Remitos, Consulta de disponibilidad y Reportes. Cada pestaña es una subclase de `ttk.Frame` en `ui/`. Para no repetir código entre pestañas, usar una clase base en `ui/base.py` con lo común (armado de campos, etiqueta de error en rojo, limpiar formulario) y que cada pestaña herede de ella (herencia, vista en clase).
+- Listados en `ttk.Treeview`; selecciones con `ttk.Combobox` (y validar igualmente que el valor esté entre las opciones); campos de texto con `ttk.Entry`.
+- Validación en la interfaz, según los apuntes ("Validar texto" y ejercicios 1 a 6): `validate="key"` con `validatecommand` para impedir caracteres imposibles en campos numéricos, y evento `<FocusOut>` para mostrar una advertencia **en rojo debajo del campo**. Al enviar, `messagebox.showerror` con la lista de errores.
+- **Ojo con el ejemplo de los apuntes:** `new_value.isnumeric() and int(new_value) >= 0` rechaza la cadena vacía y el usuario no puede borrar el campo. La validación en vivo debe aceptar `""`; la verificación estricta ocurre al enviar.
+- Fechas ingresadas: `Entry` en formato dd/mm/aaaa (como el ejercicio 4). Siempre que se pueda, las fechas las pone el sistema.
+- **Usuarios** (de la propuesta): el personal opera los procesos; los socios consultan disponibilidad y catálogo, para lo cual hay una pestaña de consulta. La autenticación está fuera de alcance.
+
+## Patrones de diseño (exactamente dos)
+Se aplican **State** y **Strategy**, siguiendo el capítulo "Patrones State y Strategy" de los apuntes. **No implementar Singleton, Observer ni Factory Method.** (DAO y Unit of Work son organización del acceso a datos, no son los patrones declarados.)
+
+### State — ciclo de vida del Remito
+- Contexto: `Remito` (modelo). Estados en `patrones/estado_remito.py`: `EstadoRemitoBase` (clase abstracta con `ABC`) y `RemitoEmpaquetado`, `RemitoDespachado`, `RemitoEnTransito`, `RemitoRecibido`, `RemitoCancelado`, `RemitoExtraviado`.
+- Mismo esquema que el semáforo de los apuntes: el contexto tiene `cambiar_estado()`, cada estado tiene `entrar/salir`, y **el estado actual decide la transición** (`avanzar` equivale al `siguiente` del semáforo).
+- En la clase base, `avanzar`, `cancelar` y `extraviar` lanzan `TransicionInvalidaError`; cada estado concreto sobrescribe solo las que admite.
+- Persistencia: el remito guarda solo el texto del estado (`estado = Column(String(20))`). `Remito.estado_actual` (`@property`) devuelve la instancia desde un diccionario `{EstadoRemito.EMPAQUETADO: RemitoEmpaquetado(), ...}`. Los estados no guardan datos propios. Los estados no importan el modelo (reciben el remito por parámetro), para evitar imports circulares.
+- Prohibido decidir transiciones con `if/elif` sobre `remito.estado` fuera de esas clases.
+
+| Estado | `avanzar` | `cancelar` | `extraviar` |
+|---|---|---|---|
+| EMPAQUETADO | → DESPACHADO | → CANCELADO | ✗ |
+| DESPACHADO | → EN_TRANSITO | ✗ | ✗ |
+| EN_TRANSITO | → RECIBIDO | ✗ | → EXTRAVIADO |
+| RECIBIDO / CANCELADO / EXTRAVIADO | ✗ (finales) | ✗ | ✗ |
+
+- Cada cambio crea un `MovimientoRemito` (fecha-hora, estado anterior, estado nuevo, empleado, observación). El remito nace con su primer movimiento (EMPAQUETADO).
+- Devolver un préstamo interbibliotecario genera un remito `DEVOLUCION` hacia la sede propietaria.
+- **Efectos colaterales (confirmados por el grupo):** DESPACHADO → `fecha_despacho` = hoy y ejemplares EN_TRANSITO. RECIBIDO → `fecha_recepcion` = hoy; si es IDA, el préstamo pasa a ACTIVO; si es DEVOLUCION, los ejemplares quedan DISPONIBLE y el préstamo DEVUELTO. CANCELADO → ejemplares DISPONIBLE y préstamo CANCELADO. EXTRAVIADO → ejemplares EXTRAVIADO y se crea una `IncidenciaEnvio` de tipo EXTRAVIO.
+
+### Strategy — plazo y multa según el tipo de préstamo
+- `patrones/estrategia_prestamo.py`: `EstrategiaPrestamo(ABC)` con `calcular_vencimiento(fecha_prestamo)` y `calcular_multa(dias_atraso)` abstractos, y las implementaciones `EstrategiaPrestamoLocal` y `EstrategiaPrestamoInterbibliotecario`.
+- Selección **externa**, como enseñan los apuntes (el contexto no elige): un diccionario `ESTRATEGIAS = {TipoPrestamo.LOCAL: ..., TipoPrestamo.INTERBIBLIOTECARIO: ...}` que usa `PrestamoDAO` al registrar y al calcular la multa.
+- El usuario **nunca ingresa** el vencimiento: lo calcula la estrategia.
+- Valores confirmados por el grupo, en `config.py`: Local 14 días y $100 por día de atraso; Interbibliotecario 21 días y $150 por día. Montos con `Float` y `round(x, 2)`.
+- `dias_atraso = max(0, (fecha_devolucion - fecha_vencimiento).days)`; si es 0 no se genera multa.
+
+### Estado del Préstamo (sin patrón)
+Constantes de texto + un diccionario de transiciones permitidas validado en `PrestamoDAO` (confirmado por el grupo): SOLICITADO→{APROBADO, CANCELADO}; APROBADO→{EN_ENVIO (interbibliotecario), ACTIVO (local), CANCELADO}; EN_ENVIO→{ACTIVO, CANCELADO}; ACTIVO→{VENCIDO, DEVUELTO}; VENCIDO→{DEVUELTO}.
+
+## Reglas de negocio (obligatorias)
+- No prestar ejemplares que no estén DISPONIBLE.
+- No prestar a socios que no estén ACTIVO (inhabilitados o de baja).
+- Controlar vencimientos: un préstamo ACTIVO pasado de `fecha_vencimiento` se considera VENCIDO (se calcula al consultar, con un `@property` como `esta_vencido` en los apuntes).
+- No prestar un ejemplar cuya sede no sea la `sede_origen` del préstamo.
+- No iniciar préstamos, reservas ni envíos desde o hacia una sede dada de BAJA.
+- Préstamo LOCAL: `sede_origen == sede_destino`. INTERBIBLIOTECARIO: `sede_origen != sede_destino`.
+- Evitar duplicados: socios (DNI y `nro_socio`), catálogo (ISBN) y ejemplares (`codigo_inventario`).
+- Trazabilidad del remito: cada cambio de estado deja un `MovimientoRemito`; las transiciones no permitidas se rechazan. Un remito puede agrupar varios ejemplares entre el mismo par de sedes.
+- Reserva sobre un título y una sede de retiro; cuando queda un ejemplar disponible se asigna (ejemplar RESERVADO, reserva DISPONIBLE). Estados: PENDIENTE → DISPONIBLE → CUMPLIDA / CANCELADA / VENCIDA.
+- Devolución: registra `estado_fisico`; DANADO o DESTRUIDO deja el ejemplar fuera de circulación (DANADO / BAJA) y exige observaciones.
+- Cada ejemplar pertenece a una única sede. La disponibilidad se controla sobre el ejemplar, no sobre el libro (a diferencia del contador `ejemplares_disponibles` del ejemplo de los apuntes).
+
+## Validaciones de entrada
+Detalle por campo en `docs/VALIDACIONES.md`. Principios:
+1. **El backend es la fuente de verdad**: los DAO validan todo con `validadores.py`. La validación en vivo de la UI es solo ayuda.
+2. Primero formato (`ValidacionError`), después reglas de negocio (`ReglaNegocioError`).
+3. Defensa en profundidad: `UNIQUE`, `NOT NULL` y `nullable=False` también en las columnas.
+4. Mensajes en español y concretos: "El DNI debe tener 7 u 8 dígitos", no "valor inválido".
+
+## Convenciones de código
+- PEP 8, `snake_case` para atributos y funciones (`id_sede`, `fecha_vencimiento`) y `PascalCase` para clases. El paso desde el camelCase del diagrama es mecánico. Anotaciones simples como las de los apuntes (`peso_kg: float`), sin importar `typing`.
+- Modelos: `Base`, `Column`, `relationship(back_populates=...)`, `__repr__` y `__str__`, como en el ejemplo de biblioteca. Muchos a muchos sin atributos (Libro–Autor): tabla de asociación. Con atributos (`ItemRemito`): *Association Object*, como en los apuntes.
+- Fechas con `date`, `datetime` y `time`; columnas `Date`, `DateTime` y `Time`; `default=date.today`.
+- Nunca armar SQL con f-strings: usar el ORM.
+
+## Tests (pytest, como en "Testing unitario")
+- Clases `TestXxx`, `assert` y `pytest.raises(..., match=...)`. Un archivo por clase o DAO, `test_nombre.py`.
+- Remito: transiciones válidas e inválidas (recorrer la tabla de arriba con un `for`) y que cada cambio cree su movimiento.
+- Strategy: vencimiento y multa de cada estrategia, incluido atraso 0.
+- Cada regla de negocio, con su caso feliz y su caso de rechazo.
+- Validadores: los valores inválidos de `docs/VALIDACIONES.md`, recorridos con `for`.
+
+## Reportes (mínimo 4 no triviales; apuntar a los 6)
+Cada uno como función en `reportes/`: consulta con `session.query` y relaciones, y agregación en Python (ver tabla "No visto"). Se muestran en la pestaña Reportes: un `Combobox` para elegir y un `Treeview` para el resultado.
+1. Préstamos activos y material en tránsito.
+2. Préstamos vencidos y multas acumuladas por socio.
+3. Libros más solicitados para préstamos interbibliotecarios.
+4. Disponibilidad de catálogo por sede.
+5. Tasa de envíos exitosos e incidencias.
+6. Movimiento de ejemplares entre sedes: envíos por par origen/destino y tiempo promedio de tránsito (`fecha_recepcion - fecha_despacho`).
+
+## Plan de trabajo (fases; cada una incluye su pestaña de la UI para poder mostrarla)
+0. **Setup:** `.venv`, `requirements.txt`, `.gitignore` (`.venv/`, `__pycache__/`, `*.db`, `.pytest_cache/`, `.DS_Store`), estructura de carpetas, `database.py` (copiando la configuración de los apuntes), `constantes.py`, `excepciones.py` y ventana principal vacía.
+1. **Modelos:** entidades SQLAlchemy según el diagrama y creación de tablas.
+2. **Validadores** y sus tests.
+3. **ABM:** sedes (con horarios), empleados, socios, autores y categorías, libros y ejemplares, con sus DAO y pestañas.
+4. **Préstamos** + Strategy (vencimiento y multas).
+5. **Remitos** + State (empaquetar, despachar, recibir, cancelar, extraviar, incidencias, historial).
+6. **Reservas y devoluciones** (incluye el remito de devolución y la multa).
+7. **Consulta de disponibilidad y reportes.**
+8. **Pasada completa por el checklist de validaciones** y ensayo de la defensa (guion de `docs/VALIDACIONES.md`).
+
+## Fuera de alcance
+Notificaciones, historial de lecturas, recomendaciones, revisión detallada de la recepción, cobro de multas (solo se registra su estado) y autenticación avanzada. Dejar los puntos de extensión del modelo (`codigo_inventario`, `estado_fisico`, `IncidenciaEnvio`).

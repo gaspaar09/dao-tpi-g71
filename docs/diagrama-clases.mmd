@@ -1,0 +1,316 @@
+---
+title: Sistema de Préstamos Interbibliotecarios - Diagrama de clases (Grupo 71)
+---
+classDiagram
+    direction TB
+
+    %% =====================================================
+    %% DOMINIO
+    %% =====================================================
+    class Sede {
+        +int idSede
+        +String nombre
+        +String direccion
+        +String telefono
+        +String email
+        +EstadoSede estado
+        +darDeBaja()
+        +estaActiva() boolean
+    }
+    class HorarioSede {
+        +String diaSemana
+        +Time horaApertura
+        +Time horaCierre
+    }
+    class Empleado {
+        +String legajo
+        +String nombre
+        +RolEmpleado rol
+    }
+    class Socio {
+        +int nroSocio
+        +String dni
+        +String nombre
+        +String apellido
+        +String email
+        +String telefono
+        +Date fechaAlta
+        +EstadoSocio estado
+        +estaHabilitado() boolean
+        +inhabilitar()
+    }
+    class Libro {
+        +String isbn
+        +String titulo
+        +String editorial
+        +int anioEdicion
+        +String idioma
+        +TipoMaterial tipoMaterial
+    }
+    class Autor {
+        +int idAutor
+        +String nombre
+        +String apellido
+    }
+    class Categoria {
+        +int idCategoria
+        +String nombre
+    }
+    class Ejemplar {
+        +String codigoInventario
+        +EstadoEjemplar estado
+        +EstadoFisico estadoFisico
+        +estaDisponible() boolean
+        +cambiarEstado(EstadoEjemplar nuevo)
+    }
+    class Prestamo {
+        +int idPrestamo
+        +TipoPrestamo tipo
+        +EstadoPrestamo estado
+        +Date fechaSolicitud
+        +Date fechaPrestamo
+        +Date fechaVencimiento
+        +validarPrestamo()
+        +estaVencido() boolean
+        +estrategia() EstrategiaPrestamo
+    }
+    class Reserva {
+        +int idReserva
+        +Date fechaReserva
+        +Date fechaVencimiento
+        +EstadoReserva estado
+        +asignarEjemplar()
+        +cancelar()
+    }
+    class Devolucion {
+        +Date fechaDevolucion
+        +EstadoFisico estadoFisico
+        +String observaciones
+    }
+    class Multa {
+        +int diasAtraso
+        +Float monto
+        +EstadoMulta estado
+        +calcularMonto() Float
+    }
+    class Remito {
+        +String nroRemito
+        +TipoEnvio tipo
+        +EstadoRemito estado
+        +Date fechaCreacion
+        +Date fechaDespacho
+        +Date fechaRecepcion
+        +estadoActual() EstadoRemitoBase
+        +cambiarEstado(EstadoRemito nuevo, Empleado empleado, String observacion)
+        +avanzarEstado(Empleado empleado, String observacion)
+        +cancelar(Empleado empleado, String observacion)
+        +extraviar(Empleado empleado, String observacion)
+    }
+    class ItemRemito {
+        +EstadoFisico estadoRecepcion
+    }
+    class MovimientoRemito {
+        +DateTime fechaHora
+        +EstadoRemito estadoAnterior
+        +EstadoRemito estadoNuevo
+        +String observacion
+    }
+    class IncidenciaEnvio {
+        +TipoIncidencia tipo
+        +Date fecha
+        +String descripcion
+    }
+
+    %% =====================================================
+    %% PATRON STATE - ciclo de vida del Remito
+    %% Contexto: Remito. El estado concreto decide las transiciones.
+    %% =====================================================
+    class EstadoRemitoBase {
+        <<abstract>>
+        +codigo() EstadoRemito
+        +entrar(Remito remito, Empleado empleado, String observacion)
+        +salir(Remito remito)
+        +avanzar(Remito remito, Empleado empleado, String observacion)
+        +cancelar(Remito remito, Empleado empleado, String observacion)
+        +extraviar(Remito remito, Empleado empleado, String observacion)
+    }
+    class RemitoEmpaquetado {
+        +avanzar() a DESPACHADO
+        +cancelar() a CANCELADO
+    }
+    class RemitoDespachado {
+        +avanzar() a EN_TRANSITO
+    }
+    class RemitoEnTransito {
+        +avanzar() a RECIBIDO
+        +extraviar() a EXTRAVIADO
+    }
+    class RemitoRecibido {
+        estado final
+    }
+    class RemitoCancelado {
+        estado final
+    }
+    class RemitoExtraviado {
+        estado final
+    }
+
+    %% =====================================================
+    %% PATRON STRATEGY - plazo y multa segun TipoPrestamo
+    %% La estrategia se elige desde afuera (diccionario TipoPrestamo -> estrategia)
+    %% =====================================================
+    class EstrategiaPrestamo {
+        <<abstract>>
+        +calcularVencimiento(Date fechaPrestamo) Date
+        +calcularMulta(int diasAtraso) Float
+    }
+    class EstrategiaPrestamoLocal {
+        +int plazoDias
+        +Float multaPorDia
+    }
+    class EstrategiaPrestamoInterbibliotecario {
+        +int plazoDias
+        +Float multaPorDia
+    }
+
+    %% =====================================================
+    %% ENUMERACIONES
+    %% =====================================================
+    class EstadoSede {
+        <<enumeration>>
+        ACTIVA
+        BAJA
+    }
+    class EstadoSocio {
+        <<enumeration>>
+        ACTIVO
+        INHABILITADO
+        BAJA
+    }
+    class TipoMaterial {
+        <<enumeration>>
+        LIBRO
+        REVISTA
+        MATERIAL_CONSULTA
+    }
+    class EstadoEjemplar {
+        <<enumeration>>
+        DISPONIBLE
+        RESERVADO
+        PRESTADO
+        EN_TRANSITO
+        DANADO
+        EXTRAVIADO
+        BAJA
+    }
+    class EstadoFisico {
+        <<enumeration>>
+        NUEVO
+        BUENO
+        REGULAR
+        DANADO
+        DESTRUIDO
+    }
+    class TipoPrestamo {
+        <<enumeration>>
+        LOCAL
+        INTERBIBLIOTECARIO
+    }
+    class EstadoPrestamo {
+        <<enumeration>>
+        SOLICITADO
+        APROBADO
+        EN_ENVIO
+        ACTIVO
+        VENCIDO
+        DEVUELTO
+        CANCELADO
+    }
+    class EstadoReserva {
+        <<enumeration>>
+        PENDIENTE
+        DISPONIBLE
+        CUMPLIDA
+        CANCELADA
+        VENCIDA
+    }
+    class EstadoMulta {
+        <<enumeration>>
+        PENDIENTE
+        PAGADA
+    }
+    class TipoEnvio {
+        <<enumeration>>
+        IDA
+        DEVOLUCION
+    }
+    class EstadoRemito {
+        <<enumeration>>
+        EMPAQUETADO
+        DESPACHADO
+        EN_TRANSITO
+        RECIBIDO
+        CANCELADO
+        EXTRAVIADO
+    }
+    class TipoIncidencia {
+        <<enumeration>>
+        EXTRAVIO
+        DANIO
+        DEMORA
+    }
+    class RolEmpleado {
+        <<enumeration>>
+        BIBLIOTECARIO
+        ADMINISTRADOR
+    }
+
+    %% =====================================================
+    %% RELACIONES DEL DOMINIO
+    %% =====================================================
+    Sede "1" *-- "1..*" HorarioSede : tiene horarios
+    Sede "1" -- "0..*" Empleado : trabaja en
+    Sede "1" -- "0..*" Ejemplar : pertenece a
+    Libro "1" -- "1..*" Ejemplar : es copia de
+    Libro "0..*" -- "1..*" Autor : escrito por
+    Libro "0..*" -- "1" Categoria : clasificado en
+
+    Socio "1" -- "0..*" Prestamo : solicita
+    Ejemplar "1" -- "0..*" Prestamo : se presta en
+    Prestamo "0..*" --> "1" Sede : sedeOrigen
+    Prestamo "0..*" --> "1" Sede : sedeDestino
+    Prestamo "1" *-- "0..1" Devolucion : cierra con
+    Prestamo "1" -- "0..1" Multa : genera
+
+    Socio "1" -- "0..*" Reserva : realiza
+    Libro "1" -- "0..*" Reserva : se reserva
+    Reserva "0..*" --> "1" Sede : sedeRetiro
+    Reserva "0..1" -- "0..1" Ejemplar : ejemplarAsignado
+
+    Remito "1" *-- "1..*" ItemRemito : contiene
+    ItemRemito "0..*" -- "1" Ejemplar : transporta
+    ItemRemito "0..*" -- "1" Prestamo : corresponde a
+    Remito "1" *-- "1..*" MovimientoRemito : historial
+    Remito "1" *-- "0..*" IncidenciaEnvio : registra
+    Remito "0..*" --> "1" Sede : sedeOrigen
+    Remito "0..*" --> "1" Sede : sedeDestino
+    MovimientoRemito "0..*" --> "1" Empleado : registrado por
+
+    %% =====================================================
+    %% RELACIONES DE LOS PATRONES
+    %% =====================================================
+    Remito ..> EstadoRemitoBase : delega en el estado actual
+    EstadoRemitoBase <|-- RemitoEmpaquetado
+    EstadoRemitoBase <|-- RemitoDespachado
+    EstadoRemitoBase <|-- RemitoEnTransito
+    EstadoRemitoBase <|-- RemitoRecibido
+    EstadoRemitoBase <|-- RemitoCancelado
+    EstadoRemitoBase <|-- RemitoExtraviado
+
+    Prestamo ..> EstrategiaPrestamo : usa segun su tipo
+    Multa ..> EstrategiaPrestamo : calcula monto con
+    EstrategiaPrestamo <|-- EstrategiaPrestamoLocal
+    EstrategiaPrestamo <|-- EstrategiaPrestamoInterbibliotecario
+
+    note for Remito "Se persiste solo el valor de EstadoRemito. estadoActual() devuelve la instancia de estado correspondiente. Cada cambio de estado genera un MovimientoRemito."
+    note for EstrategiaPrestamo "Seleccion externa: un diccionario TipoPrestamo a estrategia, usado al crear el prestamo y al calcular la multa."
