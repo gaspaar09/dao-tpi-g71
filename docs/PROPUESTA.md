@@ -183,4 +183,4 @@ FRC – UTN
 
 - Patrón State: `Remito` es el contexto y delega en su estado actual (`EstadoRemitoBase` y una clase por estado), que define qué transiciones admite. Solo se persiste el código del estado.
 
-- Patrón Strategy: `Prestamo` obtiene, según su tipo, una `EstrategiaPrestamo` (local o interbibliotecaria) que calcula el vencimiento y la multa; `Multa.calcularMonto()` delega en ella.
+- Patrón Strategy: el DAO (`PrestamoDAO` o `RemitoDAO`) elige la `EstrategiaPrestamo` según el tipo (diccionario `ESTRATEGIAS`) y se la pasa por parámetro a `Prestamo.activar()` y a `Multa.calcularMonto()`. Ni `Prestamo`, ni `Multa`, ni los estados del remito eligen la estrategia.

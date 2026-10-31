@@ -95,7 +95,7 @@ Cada carpeta de código lleva un `__init__.py` vacío.
 
 **Capas: `ui → dao → modelos`.**
 - Los DAO **no** usan `input`/`print` ni importan `tkinter` (los apuntes: "No interactúan con el usuario"). Devuelven objetos (`obtener_por_...`) o diccionarios "listos para mostrar", materializados dentro de la sesión para evitar `DetachedInstanceError`. La sesión se crea con `expire_on_commit=False`, igual que en los apuntes.
-- Las reglas de negocio viven en los DAO (como `PrestamoDAO.registrar` en el ejemplo) y en métodos o `@property` de los modelos (como `esta_vencido`).
+- Todo método que figure en el diagrama de clases se implementa en esa clase del modelo, y el DAO lo llama. Ejemplos: `Prestamo.validar_prestamo()` revisa socio habilitado, ejemplar disponible, que el ejemplar pertenezca a la sede de origen y que ambas sedes estén activas, usando solo las relaciones del objeto; `Reserva.asignar_ejemplar(ejemplar)` y `Reserva.cancelar()` cambian el estado de la reserva y del ejemplar. El DAO se ocupa de consultar (por ejemplo, buscar un ejemplar disponible), llamar al método del modelo, manejar la sesión y persistir. Las reglas que necesitan consultar otras filas (DNI o ISBN repetidos, reserva duplicada) quedan en el DAO. Esto mantiene el código coherente con el diagrama que se defiende.
 - Los DAO validan **siempre** con `validadores.py` antes de tocar la base: así el backend es la fuente de verdad y se puede probar sin interfaz.
 - La UI solo captura `ValidacionError` y `ReglaNegocioError`, y muestra el mensaje.
 - Excepciones propias definidas como en los apuntes: heredan de `Exception`, con `__init__(self, mensaje)` y `super().__init__(mensaje)`. `TransicionInvalidaError` hereda de `ReglaNegocioError`.
@@ -129,11 +129,13 @@ Se aplican **State** y **Strategy**, siguiendo el capítulo "Patrones State y St
 
 - Cada cambio crea un `MovimientoRemito` (fecha-hora, estado anterior, estado nuevo, empleado, observación). El remito nace con su primer movimiento (EMPAQUETADO).
 - Devolver un préstamo interbibliotecario genera un remito `DEVOLUCION` hacia la sede propietaria.
-- **Efectos colaterales (confirmados por el grupo):** DESPACHADO → `fecha_despacho` = hoy y ejemplares EN_TRANSITO. RECIBIDO → `fecha_recepcion` = hoy; si es IDA, el préstamo pasa a ACTIVO (con `fecha_prestamo` = hoy y el vencimiento calculado por la estrategia); si es DEVOLUCION, los ejemplares quedan DISPONIBLE (el préstamo ya quedó DEVUELTO cuando el socio devolvió). CANCELADO → ejemplares DISPONIBLE y préstamo CANCELADO. EXTRAVIADO → ejemplares EXTRAVIADO, se crea una `IncidenciaEnvio` de tipo EXTRAVIO y, si es IDA, el préstamo pasa a CANCELADO.
+- **Efectos colaterales (confirmados por el grupo):** DESPACHADO → `fecha_despacho` = hoy y ejemplares EN_TRANSITO. RECIBIDO → `fecha_recepcion` = hoy; si es IDA, el préstamo pasa a ACTIVO (lo hace `RemitoDAO`, ver abajo); si es DEVOLUCION, los ejemplares quedan DISPONIBLE (el préstamo ya quedó DEVUELTO cuando el socio devolvió). CANCELADO → ejemplares DISPONIBLE y préstamo CANCELADO. EXTRAVIADO → ejemplares EXTRAVIADO, se crea una `IncidenciaEnvio` de tipo EXTRAVIO y, si es IDA, el préstamo pasa a CANCELADO.
+- **Activación del préstamo interbibliotecario (EN_ENVIO → ACTIVO).** Los estados del remito **no conocen ni importan** `EstrategiaPrestamo` ni `ESTRATEGIAS`, y la firma de `avanzar(empleado, observacion)` no cambia. Después de `avanzar()`, si el remito quedó RECIBIDO y es de tipo IDA, `RemitoDAO` recorre sus ítems y por cada préstamo llama a `prestamo.activar(ESTRATEGIAS[prestamo.tipo])`. Todo ocurre en la misma sesión que el cambio de estado, con un solo commit: si algo falla, `obtener_session()` hace rollback de todo. Los demás efectos colaterales siguen como se describen arriba.
 
 ### Strategy — plazo y multa según el tipo de préstamo
 - `patrones/estrategia_prestamo.py`: `EstrategiaPrestamo(ABC)` con `calcular_vencimiento(fecha_prestamo)` y `calcular_multa(dias_atraso)` abstractos, y las implementaciones `EstrategiaPrestamoLocal` y `EstrategiaPrestamoInterbibliotecario`.
-- Selección **externa**, como enseñan los apuntes (el contexto no elige): un diccionario `ESTRATEGIAS = {TipoPrestamo.LOCAL: ..., TipoPrestamo.INTERBIBLIOTECARIO: ...}` que usa `PrestamoDAO` al activar el préstamo (para calcular el vencimiento) y al calcular la multa.
+- Selección **externa**, como enseñan los apuntes (el contexto no elige): un diccionario `ESTRATEGIAS = {TipoPrestamo.LOCAL: ..., TipoPrestamo.INTERBIBLIOTECARIO: ...}` que usan los DAO al activar el préstamo (para calcular el vencimiento) y al calcular la multa.
+- La estrategia se **inyecta por parámetro**, como `CalculadorEnvio(estrategia)` en los apuntes: el DAO (`PrestamoDAO`, o `RemitoDAO` al recibir un remito IDA) obtiene `ESTRATEGIAS[prestamo.tipo]` y se la pasa a `prestamo.activar(estrategia)` (fija `fecha_prestamo` = hoy, `fecha_vencimiento = estrategia.calcular_vencimiento(fecha_prestamo)` y pasa el ejemplar a PRESTADO) y a `multa.calcular_monto(estrategia)`. Ni `Prestamo` ni `Multa` eligen la estrategia: ese es el argumento de "selección externa" para la defensa.
 - El usuario **nunca ingresa** el vencimiento: lo calcula la estrategia. `fecha_prestamo` y `fecha_vencimiento` se fijan **cuando el préstamo pasa a ACTIVO** (en el interbibliotecario, al recibirse el remito de ida), para que el tránsito no consuma el plazo.
 - Valores confirmados por el grupo, en `config.py`: Local 31 días y $100 por día de atraso; Interbibliotecario 38 días y $150 por día. Montos con `Float` y `round(x, 2)`.
 - `dias_atraso = max(0, (fecha_devolucion - fecha_vencimiento).days)`, con `fecha_devolucion` = el día en que el **socio** devolvió (no la fecha del remito de vuelta); si es 0 no se genera multa.
@@ -141,8 +143,12 @@ Se aplican **State** y **Strategy**, siguiendo el capítulo "Patrones State y St
 ### Estado del Préstamo (sin patrón)
 Constantes de texto + un diccionario de transiciones permitidas validado en `PrestamoDAO` (confirmado por el grupo): SOLICITADO→{APROBADO, CANCELADO}; APROBADO→{EN_ENVIO (interbibliotecario), ACTIVO (local), CANCELADO}; EN_ENVIO→{ACTIVO, CANCELADO}; ACTIVO→{DEVUELTO}.
 
+- **Activación (dos caminos; en ambos el DAO elige la estrategia).** Local: el préstamo pasa de APROBADO a ACTIVO sin remito, así que `PrestamoDAO.aprobar()` llama a `prestamo.activar(ESTRATEGIAS[prestamo.tipo])` en la propia aprobación. Interbibliotecario: `RemitoDAO` llama a `activar()` cuando el remito IDA queda RECIBIDO (ver State).
+
 - **VENCIDO no se guarda.** En la base el préstamo sigue ACTIVO y un `@property` (`estado_efectivo`, como `esta_vencido` en los apuntes) devuelve VENCIDO si está ACTIVO y `fecha_vencimiento < hoy`. Los reportes filtran `estado == ACTIVO` con vencimiento anterior a hoy. Un préstamo vencido se devuelve igual que uno vigente.
-- **Reserva del ejemplar.** Al pasar a APROBADO el ejemplar queda RESERVADO (así dos préstamos aprobados no pueden pedir el mismo); pasa a PRESTADO cuando el préstamo se activa; si se cancela, vuelve a DISPONIBLE.
+- **Reserva del ejemplar.**
+  - *Interbibliotecario:* al aprobar, el ejemplar pasa a RESERVADO (así dos préstamos aprobados no pueden pedir el mismo). Pasa a PRESTADO cuando el remito IDA queda RECIBIDO y se llama a `activar()`. Si el préstamo se cancela, vuelve a DISPONIBLE.
+  - *Local:* `PrestamoDAO.aprobar()` valida que el ejemplar esté DISPONIBLE y llama a `activar(estrategia)` en la misma operación. El ejemplar pasa directo a PRESTADO, sin pasar por RESERVADO. El estado APROBADO del local es transitorio, pero se mantiene en el diccionario de transiciones para que el flujo sea igual en los dos tipos.
 - **Cancelación.** Desde SOLICITADO o APROBADO no hay remito: solo se libera el ejemplar. Desde EN_ENVIO solo se permite si el remito sigue EMPAQUETADO, y se cancela junto con el remito; si ya fue despachado o está en tránsito, se rechaza con `ReglaNegocioError`.
 - **Devolución.** Al registrarla, el préstamo pasa a DEVUELTO ese día y se calcula la multa con esa fecha. Si es interbibliotecario, además se crea el remito DEVOLUCION; el ejemplar no vuelve a estar DISPONIBLE hasta que ese remito se recibe en la sede propietaria (pasa a EN_TRANSITO al despacharse).
 
@@ -160,6 +166,7 @@ Constantes de texto + un diccionario de transiciones permitidas validado en `Pre
 - Plazos de la reserva (confirmados, constantes en `config.py`): una reserva PENDIENTE espera **45 días** a que se libere un ejemplar; al pasar a DISPONIBLE el socio tiene **2 días** para retirarlo (al asignar el ejemplar, `fecha_vencimiento` se reescribe como hoy + 2 días).
 - Una reserva vencida (en cualquiera de las dos etapas) pasa a VENCIDA; si tenía ejemplar asignado, este se libera y se le asigna a la siguiente reserva PENDIENTE del mismo título y sede. Como esto **modifica datos**, el estado sí se guarda: `ReservaDAO.procesar_vencimientos()` se ejecuta al abrir la app y al abrir las pestañas de Reservas y de Consulta de disponibilidad.
 - Devolución: registra `estado_fisico`; DANADO o DESTRUIDO deja el ejemplar fuera de circulación (DANADO / BAJA) y exige observaciones.
+- Un libro (título) puede tener 0 ejemplares; la disponibilidad de un título sin ejemplares es 0.
 - Cada ejemplar pertenece a una única sede. La disponibilidad se controla sobre el ejemplar, no sobre el libro (a diferencia del contador `ejemplares_disponibles` del ejemplo de los apuntes).
 
 ## Validaciones de entrada
@@ -171,7 +178,8 @@ Detalle por campo en `docs/VALIDACIONES.md`. Principios:
 5. **Normalizar antes de comparar duplicados.** `unique=True` en SQLite distingue mayúsculas y espacios, así que el DAO normaliza (`strip`, minúsculas, ISBN sin guiones, DNI solo dígitos) y consulta antes de insertar; la restricción `unique` queda como red de seguridad.
 
 ## Convenciones de código
-- PEP 8, `snake_case` para atributos y funciones (`id_sede`, `fecha_vencimiento`) y `PascalCase` para clases. El paso desde el camelCase del diagrama es mecánico. Anotaciones simples como las de los apuntes (`peso_kg: float`), sin importar `typing`.
+- PEP 8, `snake_case` para atributos y funciones (`fecha_vencimiento`, `nro_socio`) y `PascalCase` para clases. El paso desde el camelCase del diagrama es mecánico para los atributos comunes; las claves primarias y foráneas se rigen por la regla de abajo. Anotaciones simples como las de los apuntes (`peso_kg: float`), sin importar `typing`.
+- **Claves primarias y foráneas.** Todas las tablas de entidades tienen `id = Column(Integer, primary_key=True)`, como en el "Ejemplo completo: Sistema de biblioteca" de los apuntes. Las tablas de asociación simples (`libro_autor`) llevan solo sus dos claves foráneas, como en los apuntes. `ItemRemito` es una entidad y lleva `id`. Los atributos naturales (`nro_socio`, `dni`, `isbn`, `legajo`, `codigo_inventario`, `nro_remito`) son `unique=True, nullable=False`. En el diagrama, `idSede`, `idPrestamo`, `idReserva`, `idAutor` e `idCategoria` se implementan como `id`. Las claves foráneas se llaman `<entidad>_id` (`sede_id`, `libro_id`, `socio_id`, `ejemplar_id`), igual que `cliente_id` y `libro_id` en los apuntes; por ejemplo, el empleado pertenece a una sede mediante `sede_id` (obligatorio). Cuando una clase tiene más de una clave a la misma tabla, o la clave cumple un rol, se nombra `<rol>_id`: `sede_origen_id` y `sede_destino_id` (`Prestamo` y `Remito`) y `sede_retiro_id` (`Reserva`).
 - Modelos: `Base`, `Column`, `relationship(back_populates=...)`, `__repr__` y `__str__`, como en el ejemplo de biblioteca. Muchos a muchos sin atributos (Libro–Autor): tabla de asociación. Con atributos (`ItemRemito`): *Association Object*, como en los apuntes.
 - Fechas con `date`, `datetime` y `time`; columnas `Date`, `DateTime` y `Time`; `default=date.today`.
 - Nunca armar SQL con f-strings: usar el ORM.
@@ -194,11 +202,11 @@ Cada uno como función en `reportes/`: consulta con `session.query` y relaciones
 
 ## Plan de trabajo (fases; cada una incluye su pestaña de la UI para poder mostrarla)
 0. **Setup:** `.venv`, `requirements.txt`, `.gitignore` (`.venv/`, `__pycache__/`, `*.db`, `.pytest_cache/`, `.DS_Store`), estructura de carpetas, `database.py` (copiando la configuración de los apuntes), `constantes.py`, `excepciones.py` y ventana principal vacía.
-1. **Modelos:** entidades SQLAlchemy según el diagrama y creación de tablas.
+1. **Modelos:** entidades SQLAlchemy según el diagrama y creación de tablas. Además, los modelos implementan los métodos del diagrama: `Socio.esta_habilitado()` e `inhabilitar()`, `Ejemplar.esta_disponible()` y `cambiar_estado(nuevo)` (valida que `nuevo` sea una constante de `EstadoEjemplar`), `Sede.dar_de_baja()` y `esta_activa()`, `Reserva.cancelar()`, y los de `Prestamo`, `Multa` y `Remito`.
 2. **Validadores** y sus tests.
 3. **ABM:** sedes (con horarios), empleados, socios, autores y categorías, libros y ejemplares, con sus DAO y pestañas.
 4. **Préstamos** + Strategy (vencimiento y multas).
-5. **Remitos** + State (empaquetar, despachar, recibir, cancelar, extraviar, incidencias, historial).
+5. **Remitos** + State (empaquetar, despachar, recibir, cancelar, extraviar, incidencias, historial). `RemitoDAO` importa `ESTRATEGIAS` de `patrones/estrategia_prestamo.py` para activar los préstamos al recibir un remito IDA: es la única dependencia entre ambos patrones y vive en el DAO, no en las clases de State.
 6. **Reservas y devoluciones** (incluye el remito de devolución, la multa y `procesar_vencimientos()` de reservas).
 7. **Consulta de disponibilidad y reportes.**
 8. **Pasada completa por el checklist de validaciones** y ensayo de la defensa (guion de `docs/VALIDACIONES.md`).

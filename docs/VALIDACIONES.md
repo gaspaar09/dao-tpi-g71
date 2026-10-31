@@ -48,7 +48,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 **HorarioSede:** mínimo un horario por sede; día entre lunes y domingo y sin repetirse en la misma sede; formato `HH:MM` (`time(hora, minuto)`); `hora_apertura < hora_cierre`.
 
 ### Empleado
-`legajo` obligatorio, único, letras y dígitos, hasta 20. `nombre` obligatorio, solo letras, 2–80. `rol` ∈ `RolEmpleado`.
+`legajo` obligatorio, único, letras y dígitos, hasta 20. `nombre` obligatorio, solo letras, 2–80. `rol` ∈ `RolEmpleado`. `sede_id` obligatorio: la sede debe existir y estar ACTIVA al dar de alta. En un `MovimientoRemito` no se exige que el empleado pertenezca a la sede del remito; solo se guarda su sede.
 
 ### Socio
 | Campo | Regla |
@@ -85,7 +85,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 - LOCAL → `origen == destino`. INTERBIBLIOTECARIO → `origen != destino`.
 - `fecha_solicitud` = hoy (sistema). `fecha_prestamo` y `fecha_vencimiento` las fija el sistema cuando el préstamo pasa a ACTIVO; el vencimiento lo calcula la estrategia (31 días local, 38 interbibliotecario) y es siempre posterior a `fecha_prestamo`. El usuario no las ingresa.
 - Transiciones de estado solo las permitidas. VENCIDO no se guarda: se calcula.
-- Al aprobar, el ejemplar debe seguir DISPONIBLE y pasa a RESERVADO; al cancelar vuelve a DISPONIBLE.
+- Al aprobar, el ejemplar debe seguir DISPONIBLE. Interbibliotecario: pasa a RESERVADO hasta que el remito IDA se recibe; al cancelar vuelve a DISPONIBLE. Local: el préstamo se activa en la misma aprobación y el ejemplar pasa directo a PRESTADO.
 - Cancelar desde EN_ENVIO solo si el remito está EMPAQUETADO; si ya fue despachado o está en tránsito, se rechaza.
 
 ### Reserva

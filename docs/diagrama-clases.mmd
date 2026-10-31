@@ -72,14 +72,14 @@ classDiagram
         +Date fechaVencimiento
         +validarPrestamo()
         +estaVencido() boolean
-        +estrategia() EstrategiaPrestamo
+        +activar(EstrategiaPrestamo estrategia)
     }
     class Reserva {
         +int idReserva
         +Date fechaReserva
         +Date fechaVencimiento
         +EstadoReserva estado
-        +asignarEjemplar()
+        +asignarEjemplar(Ejemplar ejemplar)
         +cancelar()
     }
     class Devolucion {
@@ -91,7 +91,7 @@ classDiagram
         +int diasAtraso
         +Float monto
         +EstadoMulta estado
-        +calcularMonto() Float
+        +calcularMonto(EstrategiaPrestamo estrategia) Float
     }
     class Remito {
         +String nroRemito
@@ -157,7 +157,7 @@ classDiagram
 
     %% =====================================================
     %% PATRON STRATEGY - plazo y multa segun TipoPrestamo
-    %% La estrategia se elige desde afuera (diccionario TipoPrestamo -> estrategia)
+    %% La estrategia se elige desde afuera (diccionario TipoPrestamo -> estrategia) y se pasa por parametro
     %% =====================================================
     class EstrategiaPrestamo {
         <<abstract>>
@@ -271,7 +271,7 @@ classDiagram
     Sede "1" *-- "1..*" HorarioSede : tiene horarios
     Sede "1" -- "0..*" Empleado : trabaja en
     Sede "1" -- "0..*" Ejemplar : pertenece a
-    Libro "1" -- "1..*" Ejemplar : es copia de
+    Libro "1" -- "0..*" Ejemplar : es copia de
     Libro "0..*" -- "1..*" Autor : escrito por
     Libro "0..*" -- "1" Categoria : clasificado en
 
@@ -307,10 +307,10 @@ classDiagram
     EstadoRemitoBase <|-- RemitoCancelado
     EstadoRemitoBase <|-- RemitoExtraviado
 
-    Prestamo ..> EstrategiaPrestamo : usa segun su tipo
-    Multa ..> EstrategiaPrestamo : calcula monto con
+    Prestamo ..> EstrategiaPrestamo : recibe por parametro
+    Multa ..> EstrategiaPrestamo : recibe por parametro
     EstrategiaPrestamo <|-- EstrategiaPrestamoLocal
     EstrategiaPrestamo <|-- EstrategiaPrestamoInterbibliotecario
 
     note for Remito "Se persiste solo el valor de EstadoRemito. estadoActual() devuelve la instancia de estado correspondiente. Cada cambio de estado genera un MovimientoRemito."
-    note for EstrategiaPrestamo "Seleccion externa: un diccionario TipoPrestamo a estrategia, usado al crear el prestamo y al calcular la multa."
+    note for EstrategiaPrestamo "Seleccion externa: el DAO elige la estrategia en un diccionario TipoPrestamo a estrategia y se la pasa por parametro a Prestamo.activar() y a Multa.calcularMonto()."
