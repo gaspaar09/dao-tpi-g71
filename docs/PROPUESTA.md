@@ -100,11 +100,17 @@ EMPAQUETADO → DESPACHADO → EN_TRÁNSITO → RECIBIDO. Un remito puede pasar 
 
 #### **Decisiones de diseño** 
 
-- **Patrón State:** para el ciclo de vida del remito (y del préstamo), donde cada estado define qué transiciones admite. 
+- **Patrón State:** para el ciclo de vida del remito (empaquetado, despachado, en tránsito, recibido, cancelado, extraviado), donde cada estado define qué transiciones admite y rechaza las demás. Sigue el esquema visto en la cátedra: el remito es el contexto y el estado actual decide la transición.
 
-- **Patrón Strategy:** para el cálculo de multas y plazos de vencimiento según el tipo de préstamo. 
+- **Patrón Strategy:** para el cálculo del plazo de vencimiento y de la multa según el tipo de préstamo (local o interbibliotecario). La estrategia se elige desde afuera según el tipo, como se vio en clase.
 
-- **Patrón Factory Method (a confirmar):** para crear préstamos locales e interbibliotecarios con sus reglas propias. 
+- Se aplican exactamente dos patrones: no se implementan Singleton, Observer ni Factory Method. El estado del préstamo se resuelve con una enumeración y una tabla de transiciones permitidas validada al operar.
+
+#### **Tecnologías y criterio de implementación**
+
+- Python, SQLite con SQLAlchemy (estilo clásico, un DAO por entidad), interfaz de escritorio con Tkinter/ttk y pruebas con pytest.
+
+- Todo el sistema se implementa únicamente con los conceptos y las formas de implementación vistas en la cátedra durante el año.
 
 #### **Supuestos** 
 
@@ -128,10 +134,11 @@ Los procesos opcionales (envío de notificaciones, historial de lecturas, recome
 
 
 
-<!-- Start of picture text -->
-Seonemtstone ioestoSmctacon<br>stan Etadasoce tetaera Tooter<br>nab ‘ be<br>tipo: Tipotnvio [idReserva [Autor] .<br>{fechaDespachoetotneon sareelestado:caerEstadoReserva| ‘mtor|ore ——(etepor]Saco[nombre<br>[fechaRecepcion asignarEjemplar()<br>YA x<br>|ven ibe:2Tpoincdenca Jereccen (_ae<br>etaoneerr ettons ameansote ae<br>estaoneer bes eon “<br>esacome eeerecon Sten: tase =<br>[darDeBaja() a<br>4 .<br>ajo=. sstcroen icontne _|saseman5Sates repos | eta:coarsestadeerar eters<br>[a Roto eaciere stadeponie)comarca)<br>teearene tocresam | os<br>ecarestomo<br>fears<br>okie)<br>etaverio<br>Hee<br>=<br><!-- End of picture text -->
+![Diagrama de clases UML del sistema](diagrama-clases.png)
 
-**Figura 1.** Diagrama de clases UML del sistema. Las asociaciones sedeOrigen y sedeDestino de Préstamo y Remito apuntan a la misma clase Sede. 
+Versión editable en texto (Mermaid): `diagrama-clases.mmd`.
+
+**Figura 1.** Diagrama de clases UML del sistema. Las asociaciones sedeOrigen y sedeDestino de Préstamo y Remito apuntan a la misma clase Sede. Incluye además la jerarquía de estados del remito (State) y la de estrategias de préstamo (Strategy). 
 
 **Enumeraciones** 
 
@@ -173,3 +180,7 @@ FRC – UTN
 
 - ItemRemito vincula cada ejemplar enviado con el préstamo que lo originó, y MovimientoRemito guarda el historial de estados del remito. 
 
+
+- Patrón State: `Remito` es el contexto y delega en su estado actual (`EstadoRemitoBase` y una clase por estado), que define qué transiciones admite. Solo se persiste el código del estado.
+
+- Patrón Strategy: `Prestamo` obtiene, según su tipo, una `EstrategiaPrestamo` (local o interbibliotecaria) que calcula el vencimiento y la multa; `Multa.calcularMonto()` delega en ella.
