@@ -63,6 +63,12 @@ class TestAltaSede:
                 crear_sede(nombre)
 
 
+    def test_nombre_con_numeros(self):
+        preparar_base_en_memoria()
+        crear_sede("7 soles")
+        assert dao.listar()[0]['nombre'] == "7 Soles"
+
+
 class TestModificarSede:
     def test_modificar_sin_chocar_consigo_misma(self):
         preparar_base_en_memoria()
@@ -126,6 +132,16 @@ class TestBajaSede:
         dao.dar_de_baja(sede_id)
         with pytest.raises(ReglaNegocioError, match="ya está dada de baja"):
             dao.dar_de_baja(sede_id)
+
+    def test_volver_a_dar_de_alta(self):
+        preparar_base_en_memoria()
+        sede_id = crear_sede()
+        dao.dar_de_baja(sede_id)
+        dao.reactivar(sede_id)
+        assert dao.listar()[0]['estado'] == EstadoSede.ACTIVA
+        assert dao.opciones() == [(sede_id, "Central")]
+        with pytest.raises(ReglaNegocioError, match="ya está activa"):
+            dao.reactivar(sede_id)
 
     def test_no_se_da_de_baja_con_reservas_pendientes(self):
         preparar_base_en_memoria()

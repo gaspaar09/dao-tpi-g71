@@ -101,6 +101,13 @@ def validar_direccion(valor, campo, maximo):
     return texto
 
 
+def validar_nombre_con_numeros(valor, campo, minimo, maximo):
+    """Nombres que pueden llevar números ("7 Soles", "Sede 9 De Julio"):
+    misma regla que la dirección y mayúscula inicial como los demás nombres."""
+    texto = validar_texto(valor, campo, maximo, minimo)
+    return capitalizar(validar_direccion(texto, campo, maximo))
+
+
 # -------------------------------------------------------------- números
 
 def validar_entero(valor, campo, minimo, maximo=MAXIMO_ENTERO):

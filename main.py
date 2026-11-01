@@ -14,6 +14,7 @@ import modelos.prestamo
 import modelos.reserva
 import modelos.remito
 from dao.empleado_dao import EmpleadoDAO
+from dao.reserva_dao import ReservaDAO
 from datos_ejemplo import cargar_datos_ejemplo
 from ui.sedes import PestaniaSedes
 from ui.empleados import PestaniaEmpleados
@@ -21,11 +22,11 @@ from ui.socios import PestaniaSocios
 from ui.catalogo import PestaniaCatalogo
 from ui.ejemplares import PestaniaEjemplares
 from ui.prestamos import PestaniaPrestamos
+from ui.reservas import PestaniaReservas
 from ui.remitos import PestaniaRemitos
 
-# Pestañas que todavía no tienen su clase en ui/ (se completan en las fases 6 y 7)
+# Pestañas que todavía no tienen su clase en ui/ (se completan en la fase 7)
 PESTANIAS_PENDIENTES = [
-    "Reservas",
     "Consulta de disponibilidad",
     "Reportes",
 ]
@@ -33,6 +34,8 @@ PESTANIAS_PENDIENTES = [
 
 def main():
     crear_tablas()
+    # Las reservas cuyo plazo pasó se vencen al abrir la app (y liberan su ejemplar)
+    ReservaDAO().procesar_vencimientos()
 
     ventana = tk.Tk()
     ventana.title("Biblioteca - Préstamos interbibliotecarios")
@@ -77,6 +80,7 @@ def main():
         (PestaniaCatalogo(notebook), "Catálogo"),
         (PestaniaEjemplares(notebook), "Ejemplares"),
         (PestaniaPrestamos(notebook, empleado_actual), "Préstamos"),
+        (PestaniaReservas(notebook, empleado_actual), "Reservas"),
         (PestaniaRemitos(notebook, empleado_actual), "Remitos"),
     ]
     for pestania, nombre in pestanias:

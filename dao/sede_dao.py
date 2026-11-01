@@ -9,7 +9,7 @@ from modelos.sede import Sede, HorarioSede
 from modelos.prestamo import Prestamo
 from modelos.remito import Remito
 from modelos.reserva import Reserva
-from validadores import (validar_solo_letras, validar_direccion, validar_telefono, validar_prefijo_pais, validar_email, validar_opcion,
+from validadores import (validar_nombre_con_numeros, validar_direccion, validar_telefono, validar_prefijo_pais, validar_email, validar_opcion,
                          validar_hora, validar_rango_horario)
 
 # Estados que impiden dar de baja una sede porque la operación sigue abierta
@@ -21,7 +21,7 @@ RESERVAS_EN_CURSO = [EstadoReserva.PENDIENTE, EstadoReserva.DISPONIBLE]
 
 def validar_datos_sede(nombre, direccion, prefijo, telefono, email):
     """Valida el formato de los datos de la sede y los devuelve normalizados."""
-    nombre = validar_solo_letras(nombre, "nombre", 2, LARGO_NOMBRE_SEDE)
+    nombre = validar_nombre_con_numeros(nombre, "nombre", 2, LARGO_NOMBRE_SEDE)
     direccion = validar_direccion(direccion, "dirección", LARGO_DIRECCION)
     prefijo = validar_prefijo_pais(prefijo)
     telefono = validar_telefono(telefono)
@@ -104,6 +104,11 @@ class SedeDAO:
                 if reserva.estado in RESERVAS_EN_CURSO:
                     raise ReglaNegocioError("No se puede dar de baja: la sede tiene reservas pendientes")
             sede.dar_de_baja()
+
+    def reactivar(self, id):
+        with obtener_session() as session:
+            sede = buscar_por_id(session, Sede, id, "la sede")
+            sede.reactivar()
 
     def listar(self):
         """Devuelve las sedes con los datos listos para mostrar."""

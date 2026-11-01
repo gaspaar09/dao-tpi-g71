@@ -15,6 +15,7 @@ classDiagram
         +String email
         +EstadoSede estado
         +darDeBaja()
+        +reactivar()
         +estaActiva() boolean
     }
     class HorarioSede {
@@ -62,6 +63,7 @@ classDiagram
         +EstadoFisico estadoFisico
         +estaDisponible() boolean
         +cambiarEstado(EstadoEjemplar nuevo)
+        +volverACircular()
     }
     class Prestamo {
         +int idPrestamo
@@ -81,6 +83,8 @@ classDiagram
         +EstadoReserva estado
         +asignarEjemplar(Ejemplar ejemplar)
         +cancelar()
+        +vencer()
+        +cumplir()
     }
     class Devolucion {
         +Date fechaDevolucion

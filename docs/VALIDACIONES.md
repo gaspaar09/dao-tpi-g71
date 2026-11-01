@@ -38,12 +38,13 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 ### Sede
 | Campo | Regla |
 |---|---|
-| nombre | Obligatorio, 2–80 caracteres, único sin distinguir mayúsculas *(supuesto)* |
+| nombre | Obligatorio, 2–80 caracteres, letras y números (al menos una letra, por ejemplo "7 Soles"), espacios, apóstrofo y guion; se guarda capitalizado; único sin distinguir mayúsculas *(supuesto)* |
 | direccion | Obligatoria, hasta 120 |
 | telefono | Obligatorio; solo dígitos, espacios, `+`, `-`, `()`; entre 6 y 15 dígitos |
 | email | Formato válido, hasta 100 |
 | estado | Constante de `EstadoSede`; solo cambia con `dar_de_baja()` |
 | baja | No permitir con préstamos activos, remitos en curso o reservas pendientes *(supuesto)* |
+| volver a dar de alta | Solo una sede dada de baja; vuelve a ACTIVA con sus horarios, empleados y ejemplares |
 
 **HorarioSede:** mínimo un horario por sede; día entre lunes y domingo y sin repetirse en la misma sede; formato `HH:MM` (`time(hora, minuto)`); `hora_apertura < hora_cierre`.
 
@@ -89,7 +90,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 - Cancelar desde EN_ENVIO solo si el remito está EMPAQUETADO: el ejemplar sale del remito (si era el único, se cancela el remito). Si ya fue despachado o está en tránsito, se rechaza.
 
 ### Reserva
-Socio ACTIVO. Libro existente. `sede_retiro` ACTIVA. `fecha_reserva` = hoy. `fecha_vencimiento` la calcula el sistema: hoy + 45 días mientras está PENDIENTE; al asignarle un ejemplar se reescribe como hoy + 2 días (plazo de retiro). No duplicar una reserva PENDIENTE/DISPONIBLE del mismo socio y libro *(supuesto)*. Cancelar solo si está PENDIENTE o DISPONIBLE.
+Socio ACTIVO. Libro existente. `sede_retiro` ACTIVA. `fecha_reserva` = hoy. `fecha_vencimiento` la calcula el sistema: hoy + 45 días mientras está PENDIENTE; al asignarle un ejemplar se reescribe como hoy + 2 días (plazo de retiro). No duplicar una reserva PENDIENTE/DISPONIBLE del mismo socio y libro *(supuesto)*. Si hay un ejemplar DISPONIBLE del título en la sede, se asigna en el acto. Cancelar solo si está PENDIENTE o DISPONIBLE. Retirar solo si está DISPONIBLE: crea un préstamo LOCAL activo, con las mismas reglas que cualquier préstamo (socio habilitado, sede activa).
 
 ### Devolución y multa
 - El préstamo debe estar ACTIVO (vencido o no, porque VENCIDO no se guarda); no se devuelve dos veces. Si es interbibliotecario, se crea el remito DEVOLUCION.

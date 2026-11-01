@@ -43,6 +43,13 @@ class Sede(Base):
             raise ReglaNegocioError(f"La sede {self.nombre} ya está dada de baja")
         self.estado = EstadoSede.BAJA
 
+    def reactivar(self):
+        """Vuelve a dar de alta una sede dada de baja (la baja es lógica, así
+        que la sede conserva sus horarios, empleados y ejemplares)."""
+        if self.esta_activa():
+            raise ReglaNegocioError(f"La sede {self.nombre} ya está activa")
+        self.estado = EstadoSede.ACTIVA
+
 
 class HorarioSede(Base):
     """Horario de atención de una sede para un día de la semana."""

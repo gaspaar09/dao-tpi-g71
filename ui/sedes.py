@@ -6,7 +6,7 @@ from config import LARGO_NOMBRE_SEDE, LARGO_DIRECCION
 from constantes import DiaSemana, PaisTelefono
 from dao.sede_dao import SedeDAO
 from ui.base import PestaniaBase
-from validadores import validar_solo_letras, validar_direccion, validar_telefono, validar_email, validar_hora
+from validadores import validar_nombre_con_numeros, validar_direccion, validar_telefono, validar_email, validar_hora
 
 CAMPOS_SEDE = ['nombre', 'direccion', 'prefijo', 'telefono', 'email']
 CAMPOS_HORARIO = ['dia', 'apertura', 'cierre']
@@ -24,7 +24,7 @@ class PestaniaSedes(PestaniaBase):
         datos = ttk.Frame(formulario)
         datos.pack(side="left", anchor="n")
         self.crear_campo(datos, 'nombre', "Nombre:", 0,
-                         lambda v: validar_solo_letras(v, "nombre", 2, LARGO_NOMBRE_SEDE))
+                         lambda v: validar_nombre_con_numeros(v, "nombre", 2, LARGO_NOMBRE_SEDE))
         self.crear_campo(datos, 'direccion', "Dirección:", 1,
                          lambda v: validar_direccion(v, "dirección", LARGO_DIRECCION))
         # El código de país no se escribe: se elige el país y el número va sin "+"
@@ -48,7 +48,8 @@ class PestaniaSedes(PestaniaBase):
         self.crear_campo(marco_campos, 'cierre', "Cierre (HH:MM):", 2,
                          lambda v: validar_hora(v, "hora de cierre"), ancho=10)
 
-        self.crear_botones(self, [("Dar de baja", self.dar_de_baja)]).pack(anchor="w", pady=10)
+        self.crear_botones(self, [("Dar de baja", self.dar_de_baja),
+                                  ("Volver a dar de alta", self.reactivar)]).pack(anchor="w", pady=10)
 
         marco, self.tabla = self.crear_tabla(self, [
             ('nombre', "Nombre", 180), ('direccion', "Dirección", 220), ('telefono_completo', "Teléfono", 140),
@@ -96,6 +97,10 @@ class PestaniaSedes(PestaniaBase):
     def dar_de_baja(self):
         self.accion_sobre_seleccion(self.dao.dar_de_baja, "¿Dar de baja la sede seleccionada?",
                                     "Sede dada de baja")
+
+    def reactivar(self):
+        self.accion_sobre_seleccion(self.dao.reactivar, "¿Volver a dar de alta la sede seleccionada?",
+                                    "Sede activa nuevamente")
 
     def refrescar(self):
         self.filas = self.dao.listar()

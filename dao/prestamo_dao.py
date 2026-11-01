@@ -6,8 +6,8 @@ en Prestamo.validar_prestamo(); el plazo lo calcula la estrategia que el
 DAO elige en ESTRATEGIAS (selección externa del patrón Strategy).
 """
 
-from constantes import EstadoEjemplar, EstadoPrestamo, TipoPrestamo
-from dao.comun import buscar_por_id
+from constantes import EstadoEjemplar, EstadoMulta, EstadoPrestamo, TipoPrestamo
+from dao.comun import buscar_por_id, asignar_a_reserva_pendiente
 from database import obtener_session
 from excepciones import ReglaNegocioError
 from modelos.ejemplar import Ejemplar
@@ -98,6 +98,18 @@ class PrestamoDAO:
             if prestamo.estado in [EstadoPrestamo.APROBADO, EstadoPrestamo.EN_ENVIO]:
                 prestamo.ejemplar.cambiar_estado(EstadoEjemplar.DISPONIBLE)
             prestamo.estado = EstadoPrestamo.CANCELADO
+            # El ejemplar liberado pasa a quien lo estaba esperando
+            asignar_a_reserva_pendiente(session, prestamo.ejemplar)
+
+    def pagar_multa(self, id):
+        """Solo se registra el pago (el cobro está fuera de alcance)."""
+        with obtener_session() as session:
+            prestamo = buscar_por_id(session, Prestamo, id, "el préstamo")
+            if prestamo.multa is None:
+                raise ReglaNegocioError("El préstamo no tiene multa")
+            if prestamo.multa.estado != EstadoMulta.PENDIENTE:
+                raise ReglaNegocioError("La multa ya está pagada")
+            prestamo.multa.estado = EstadoMulta.PAGADA
 
     def listar(self):
         """Préstamos listos para mostrar, los más nuevos primero. El estado es
@@ -117,6 +129,7 @@ class PrestamoDAO:
                     'fecha_solicitud': formatear_fecha(prestamo.fecha_solicitud),
                     'fecha_prestamo': formatear_fecha(prestamo.fecha_prestamo),
                     'fecha_vencimiento': formatear_fecha(prestamo.fecha_vencimiento),
+                    'multa': str(prestamo.multa) if prestamo.multa else "",
                 }
                 for prestamo in prestamos
             ]

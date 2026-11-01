@@ -1,6 +1,6 @@
 import pytest
 
-from constantes import EstadoEjemplar
+from constantes import EstadoEjemplar, EstadoFisico
 from excepciones import ValidacionError
 from tests.auxiliares import crear_ejemplar, crear_sede
 
@@ -25,3 +25,15 @@ class TestEjemplar:
             with pytest.raises(ValidacionError, match="Estado de ejemplar inválido"):
                 ejemplar.cambiar_estado(valor)
         assert ejemplar.estado == EstadoEjemplar.DISPONIBLE
+
+
+class TestVolverACircular:
+    def test_segun_el_estado_fisico(self):
+        casos = [(EstadoFisico.NUEVO, EstadoEjemplar.DISPONIBLE), (EstadoFisico.BUENO, EstadoEjemplar.DISPONIBLE),
+                 (EstadoFisico.REGULAR, EstadoEjemplar.DISPONIBLE), (EstadoFisico.DANADO, EstadoEjemplar.DANADO),
+                 (EstadoFisico.DESTRUIDO, EstadoEjemplar.BAJA)]
+        for estado_fisico, esperado in casos:
+            ejemplar = crear_ejemplar(crear_sede(), EstadoEjemplar.PRESTADO)
+            ejemplar.estado_fisico = estado_fisico
+            ejemplar.volver_a_circular()
+            assert ejemplar.estado == esperado

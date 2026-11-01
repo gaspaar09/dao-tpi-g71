@@ -7,7 +7,7 @@ import pytest
 from constantes import DiaSemana
 from excepciones import ValidacionError
 from validadores import (normalizar_texto, validar_texto, validar_texto_con_letras, validar_texto_opcional,
-                         validar_solo_letras, validar_direccion, validar_entero, validar_numero_no_negativo,
+                         validar_solo_letras, validar_direccion, validar_nombre_con_numeros, validar_entero, validar_numero_no_negativo,
                          validar_nro_socio, validar_anio_edicion, validar_dni, formatear_dni, validar_email,
                          validar_telefono, validar_prefijo_pais, validar_isbn, validar_codigo_inventario,
                          validar_legajo, validar_fecha, validar_fecha_no_futura,
@@ -86,6 +86,20 @@ class TestDireccion:
         for valor in ["1234", "12 34", "--"]:
             with pytest.raises(ValidacionError, match="al menos una letra"):
                 validar_direccion(valor, "dirección", 120)
+
+
+class TestNombreConNumeros:
+    def test_admite_numeros_y_capitaliza(self):
+        casos = [("7 soles", "7 Soles"), ("sede 9 de julio", "Sede 9 De Julio"), ("SEDE 3", "SEDE 3")]
+        for valor, esperado in casos:
+            assert validar_nombre_con_numeros(valor, "nombre", 2, 80) == esperado
+
+    def test_invalidos(self):
+        casos = [("7", "al menos 2"), ("77", "al menos una letra"), ("Sede #7", "solo puede tener letras, números"),
+                 ("", "obligatorio")]
+        for valor, mensaje in casos:
+            with pytest.raises(ValidacionError, match=mensaje):
+                validar_nombre_con_numeros(valor, "nombre", 2, 80)
 
 
 class TestEntero:

@@ -49,9 +49,32 @@ class Reserva(Base):
         self.estado = EstadoReserva.DISPONIBLE
         self.fecha_vencimiento = date.today() + timedelta(days=DIAS_RETIRO_RESERVA)
 
-    def cancelar(self):
-        if self.estado not in [EstadoReserva.PENDIENTE, EstadoReserva.DISPONIBLE]:
-            raise ReglaNegocioError(f"No se puede cancelar una reserva {self.estado}")
-        if self.ejemplar is not None:
+    def esta_en_curso(self):
+        return self.estado in [EstadoReserva.PENDIENTE, EstadoReserva.DISPONIBLE]
+
+    def liberar_ejemplar(self):
+        """El ejemplar apartado vuelve a estar disponible (sigue registrado
+        en la reserva para el historial)."""
+        if self.estado == EstadoReserva.DISPONIBLE:
             self.ejemplar.cambiar_estado(EstadoEjemplar.DISPONIBLE)
+
+    def cancelar(self):
+        if not self.esta_en_curso():
+            raise ReglaNegocioError(f"No se puede cancelar una reserva {self.estado}")
+        self.liberar_ejemplar()
         self.estado = EstadoReserva.CANCELADA
+
+    def vencer(self):
+        """Pasó el plazo de espera o de retiro: el ejemplar se libera."""
+        if not self.esta_en_curso():
+            raise ReglaNegocioError(f"No puede vencer una reserva {self.estado}")
+        self.liberar_ejemplar()
+        self.estado = EstadoReserva.VENCIDA
+
+    def cumplir(self):
+        """El socio retira el ejemplar. Queda DISPONIBLE solo un instante: el
+        DAO arma el préstamo local en la misma sesión."""
+        if self.estado != EstadoReserva.DISPONIBLE:
+            raise ReglaNegocioError(f"Solo se retira una reserva DISPONIBLE (está {self.estado})")
+        self.liberar_ejemplar()
+        self.estado = EstadoReserva.CUMPLIDA

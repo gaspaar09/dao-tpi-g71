@@ -58,3 +58,34 @@ class TestCancelarReserva:
         for estado in [EstadoReserva.CUMPLIDA, EstadoReserva.CANCELADA, EstadoReserva.VENCIDA]:
             with pytest.raises(ReglaNegocioError, match="No se puede cancelar"):
                 crear_reserva(estado).cancelar()
+
+
+def reserva_con_ejemplar():
+    reserva = crear_reserva()
+    reserva.asignar_ejemplar(crear_ejemplar(reserva.sede_retiro))
+    return reserva
+
+
+class TestVencerYCumplir:
+    def test_vencer_libera_el_ejemplar(self):
+        reserva = reserva_con_ejemplar()
+        reserva.vencer()
+        assert reserva.estado == EstadoReserva.VENCIDA
+        assert reserva.ejemplar.estado == EstadoEjemplar.DISPONIBLE
+
+    def test_vence_una_pendiente(self):
+        reserva = crear_reserva()
+        reserva.vencer()
+        assert reserva.estado == EstadoReserva.VENCIDA
+
+    def test_cumplir_solo_si_esta_disponible(self):
+        reserva = reserva_con_ejemplar()
+        reserva.cumplir()
+        assert reserva.estado == EstadoReserva.CUMPLIDA
+        with pytest.raises(ReglaNegocioError, match="Solo se retira"):
+            crear_reserva().cumplir()
+
+    def test_finales_no_vencen(self):
+        for estado in [EstadoReserva.CUMPLIDA, EstadoReserva.CANCELADA, EstadoReserva.VENCIDA]:
+            with pytest.raises(ReglaNegocioError, match="No puede vencer"):
+                crear_reserva(estado).vencer()

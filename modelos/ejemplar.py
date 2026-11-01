@@ -38,3 +38,13 @@ class Ejemplar(Base):
         if nuevo not in EstadoEjemplar.TODOS:
             raise ValidacionError(f"Estado de ejemplar inválido: {nuevo}")
         self.estado = nuevo
+
+    def volver_a_circular(self):
+        """Al volver a su sede (devolución), el estado depende de cómo llegó:
+        dañado queda fuera de circulación y destruido se da de baja."""
+        if self.estado_fisico == EstadoFisico.DANADO:
+            self.cambiar_estado(EstadoEjemplar.DANADO)
+        elif self.estado_fisico == EstadoFisico.DESTRUIDO:
+            self.cambiar_estado(EstadoEjemplar.BAJA)
+        else:
+            self.cambiar_estado(EstadoEjemplar.DISPONIBLE)

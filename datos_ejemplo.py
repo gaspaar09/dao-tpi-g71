@@ -6,15 +6,17 @@ solo carga si la base está vacía.
 Primero se cargan los datos maestros (sedes, socios, catálogo, ejemplares).
 Después los préstamos y remitos se arman con los DAO, igual que desde la
 pantalla, así pasan por las mismas reglas y quedan en estados coherentes:
-hay un préstamo o remito en cada estado para poder probar cada botón.
+hay un préstamo, remito y reserva en cada estado para poder probar cada botón.
 """
 
 from datetime import date, time, timedelta
 
-from constantes import (DiaSemana, EstadoEjemplar, EstadoFisico, EstadoSede, EstadoSocio,
+from constantes import (DiaSemana, EstadoEjemplar, EstadoFisico, EstadoPrestamo, EstadoSede, EstadoSocio,
                         RolEmpleado, TipoIncidencia, TipoMaterial, TipoPrestamo)
+from dao.devolucion_dao import DevolucionDAO
 from dao.prestamo_dao import PrestamoDAO
 from dao.remito_dao import RemitoDAO
+from dao.reserva_dao import ReservaDAO
 from database import obtener_session
 from modelos.sede import Sede, HorarioSede
 from modelos.empleado import Empleado
@@ -22,6 +24,7 @@ from modelos.socio import Socio
 from modelos.catalogo import Autor, Categoria, Libro
 from modelos.ejemplar import Ejemplar
 from modelos.prestamo import Prestamo
+from modelos.reserva import Reserva
 from patrones.estrategia_prestamo import ESTRATEGIAS
 
 LOCAL = TipoPrestamo.LOCAL
@@ -47,6 +50,7 @@ def cargar_datos_ejemplo():
     if not cargar_datos_maestros():
         return False
     cargar_prestamos_y_remitos()
+    cargar_reservas_y_devoluciones()
     return True
 
 
@@ -158,8 +162,7 @@ def crear_remito(origen, destino, prestamos_ids, legajo):
 
 
 def cargar_prestamos_y_remitos():
-    """Un caso por estado. Los ejemplares que no se usan acá (REV-001 y
-    FIC-002 al final, MOR-003, RAY-004 y REV-003) quedan libres para probar."""
+    """Un préstamo y un remito en cada estado."""
     prestamos = PrestamoDAO()
     remitos = RemitoDAO()
     central, norte, sur = "Biblioteca Central", "Sede Norte", "Sede Sur"
@@ -167,17 +170,18 @@ def cargar_prestamos_y_remitos():
     martin = buscar_id(Empleado, legajo="E002")
 
     # Préstamos locales: activo, vencido, solicitado (sin aprobar) y cancelado
-    aprobar(LOCAL, 1, "RAY-001", central, central)
-    vencido = aprobar(LOCAL, 2, "MOR-001", sur, sur)
+    vencido_3_dias = aprobar(LOCAL, 1, "RAY-001", central, central)
+    vencido_9_dias = aprobar(LOCAL, 2, "MOR-001", sur, sur)  # se devuelve más abajo, con multa
     solicitar(LOCAL, 3, "FIC-001", central, central)
     prestamos.cancelar(solicitar(LOCAL, 1, "REV-001", central, central))
 
-    # Un préstamo vencido sin esperar 31 días: se corre la fecha de préstamo
-    # 40 días atrás y el vencimiento lo vuelve a calcular la estrategia
+    # Préstamos vencidos sin esperar 31 días: se corre la fecha de préstamo
+    # hacia atrás y el vencimiento lo vuelve a calcular la estrategia
     with obtener_session() as session:
-        prestamo = session.query(Prestamo).filter_by(id=vencido).first()
-        prestamo.fecha_prestamo = date.today() - timedelta(days=40)
-        prestamo.fecha_vencimiento = ESTRATEGIAS[prestamo.tipo].calcular_vencimiento(prestamo.fecha_prestamo)
+        for prestamo_id, dias in [(vencido_3_dias, 34), (vencido_9_dias, 40)]:
+            prestamo = session.query(Prestamo).filter_by(id=prestamo_id).first()
+            prestamo.fecha_prestamo = date.today() - timedelta(days=dias)
+            prestamo.fecha_vencimiento = ESTRATEGIAS[prestamo.tipo].calcular_vencimiento(prestamo.fecha_prestamo)
 
     # Interbibliotecarios aprobados que esperan remito (se pueden agrupar en uno)
     aprobar(INTER, 3, "RAY-002", central, norte)
@@ -211,3 +215,52 @@ def cargar_prestamos_y_remitos():
     remitos.avanzar(remito, laura, "")
     remitos.avanzar(remito, laura, "")
     remitos.extraviar(remito, laura, "El paquete no llegó a destino")
+
+
+# ---------------------------------------------- reservas y devoluciones
+
+def prestamo_activo(codigo):
+    """Id del préstamo ACTIVO del ejemplar con ese código."""
+    with obtener_session() as session:
+        ejemplar = session.query(Ejemplar).filter_by(codigo_inventario=codigo).first()
+        return session.query(Prestamo).filter_by(ejemplar_id=ejemplar.id, estado=EstadoPrestamo.ACTIVO).first().id
+
+
+def reservar(nro_socio, titulo, sede):
+    ReservaDAO().crear(buscar_id(Socio, nro_socio=nro_socio), buscar_id(Libro, titulo=titulo),
+                       buscar_id(Sede, nombre=sede))
+    return ReservaDAO().listar()[0]['id']
+
+
+def cargar_reservas_y_devoluciones():
+    """Una reserva en cada estado y dos devoluciones (con multa y con remito)."""
+    reservas = ReservaDAO()
+    hoy = date.today().strftime("%d/%m/%Y")
+    laura = buscar_id(Empleado, legajo="E001")
+    central, norte, sur = "Biblioteca Central", "Sede Norte", "Sede Sur"
+
+    # PENDIENTE: el único ejemplar de Norte (ANT-001) está apartado para un envío
+    reservar(1, "Antología de la literatura fantástica", norte)
+
+    # DISPONIBLE asignada en el acto: REV-003 estaba libre en Sur
+    reservar(2, "Revista de Ciencia Hoy", sur)
+
+    # CUMPLIDA: se aparta RAY-004 y el socio lo retira (préstamo local activo)
+    reservas.retirar(reservar(1, "Rayuela", sur))
+
+    # VENCIDA: nadie retiró FIC-002 y pasaron los 2 días; el ejemplar vuelve a estar libre
+    vencida = reservar(2, "Ficciones", sur)
+    with obtener_session() as session:
+        session.query(Reserva).filter_by(id=vencida).first().fecha_vencimiento = date.today() - timedelta(days=1)
+    reservas.procesar_vencimientos()
+
+    # CANCELADA: el socio desiste y REV-001 vuelve a estar libre en Central
+    reservas.cancelar(reservar(3, "Revista de Ciencia Hoy", central))
+
+    # Devolución local atrasada: MOR-001 venció hace 9 días -> multa de $900.
+    # Lucía lo estaba esperando en Sur, así que su reserva pasa a DISPONIBLE.
+    reservar(3, "La invención de Morel", sur)
+    DevolucionDAO().registrar(prestamo_activo("MOR-001"), hoy, EstadoFisico.BUENO, "", laura)
+
+    # Devolución interbibliotecaria: RAY-003 vuelve de Central a Norte con un remito
+    DevolucionDAO().registrar(prestamo_activo("RAY-003"), hoy, EstadoFisico.REGULAR, "Tapa gastada", laura)

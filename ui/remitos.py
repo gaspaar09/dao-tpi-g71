@@ -49,6 +49,11 @@ class PestaniaRemitos(PestaniaBase):
         self.lista_prestamos.bind("<FocusIn>", lambda evento: self.recargar_prestamos())
         ttk.Button(nuevo, text="Crear remito", command=self.crear_remito).grid(row=6, column=0, sticky="w",
                                                                                padx=5, pady=5)
+        # Una devolución cuyo remito se canceló necesita uno nuevo
+        self.crear_combo(nuevo, 'devolucion', "Devolución sin remito:", 4, self.dao.devoluciones_pendientes,
+                         ancho=40)
+        ttk.Button(nuevo, text="Crear remito de devolución", command=self.crear_devolucion).grid(
+            row=10, column=1, sticky="w", padx=5)
 
         # --- Incidencia del remito elegido
         bloque = ttk.Frame(superior)
@@ -122,6 +127,13 @@ class PestaniaRemitos(PestaniaBase):
                          "Remito creado: quedó EMPAQUETADO y sus préstamos EN_ENVIO"):
             self.recargar_prestamos()
 
+    def crear_devolucion(self):
+        if not self.hay_empleado() or not self.validar_campos(['devolucion']):
+            return
+        if self.ejecutar(lambda: self.dao.crear_devolucion(self.valor('devolucion'), self.empleado_actual()),
+                         "Remito de devolución creado"):
+            self.limpiar_campos(['devolucion'])
+
     # --------------------------------------------------- cambios de estado
 
     def accion_con_observacion(self, accion, pregunta, mensaje_ok):
@@ -138,7 +150,8 @@ class PestaniaRemitos(PestaniaBase):
 
     def cancelar(self):
         self.accion_con_observacion(self.dao.cancelar, "¿Cancelar el remito seleccionado?",
-                                    "Remito cancelado: sus ejemplares volvieron a estar disponibles")
+                                    "Remito cancelado. Si era de ida, los ejemplares volvieron a estar "
+                                    "disponibles; si era de devolución, esperan un remito nuevo.")
 
     def extraviar(self):
         self.accion_con_observacion(self.dao.extraviar, "¿Dar por extraviado el remito seleccionado?",

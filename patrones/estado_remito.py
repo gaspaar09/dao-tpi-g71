@@ -112,7 +112,9 @@ class RemitoRecibido(EstadoRemitoBase):
     def entrar(self, remito, empleado, observacion):
         remito.fecha_recepcion = date.today()
         if remito.tipo == TipoEnvio.DEVOLUCION:
-            cambiar_estado_ejemplares(remito, EstadoEjemplar.DISPONIBLE)
+            # Disponible, o fuera de circulación si el socio lo devolvió dañado
+            for item in remito.items:
+                item.ejemplar.volver_a_circular()
 
 
 class RemitoCancelado(EstadoRemitoBase):

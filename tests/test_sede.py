@@ -20,3 +20,13 @@ class TestSede:
         sede.dar_de_baja()
         with pytest.raises(ReglaNegocioError, match="ya está dada de baja"):
             sede.dar_de_baja()
+
+    def test_reactivar(self):
+        sede = crear_sede()
+        sede.dar_de_baja()
+        sede.reactivar()
+        assert sede.esta_activa()
+
+    def test_no_se_reactiva_una_activa(self):
+        with pytest.raises(ReglaNegocioError, match="ya está activa"):
+            crear_sede().reactivar()
