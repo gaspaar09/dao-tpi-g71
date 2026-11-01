@@ -11,7 +11,9 @@ from dao.comun import buscar_por_id
 from database import obtener_session
 from excepciones import ReglaNegocioError
 from modelos.ejemplar import Ejemplar
+from modelos.empleado import Empleado
 from modelos.prestamo import Prestamo
+from modelos.remito import ItemRemito
 from modelos.sede import Sede
 from modelos.socio import Socio
 from patrones.estrategia_prestamo import ESTRATEGIAS
@@ -66,7 +68,7 @@ class PrestamoDAO:
     def aprobar(self, id):
         """Aprueba la solicitud. Local: se activa en la misma operación (el
         ejemplar pasa directo a PRESTADO). Interbibliotecario: el ejemplar queda
-        RESERVADO hasta que llegue el remito de ida (Fase 5)."""
+        RESERVADO hasta que llegue el remito de ida."""
         with obtener_session() as session:
             prestamo = buscar_por_id(session, Prestamo, id, "el préstamo")
             verificar_transicion(prestamo, EstadoPrestamo.APROBADO)
@@ -80,15 +82,20 @@ class PrestamoDAO:
             else:
                 prestamo.ejemplar.cambiar_estado(EstadoEjemplar.RESERVADO)
 
-    def cancelar(self, id):
+    def cancelar(self, id, empleado_id=None):
         """Desde SOLICITADO o APROBADO no hay remito: solo se libera el ejemplar.
-        Un préstamo EN_ENVIO se cancela cancelando su remito (Fase 5)."""
+        Desde EN_ENVIO el ejemplar se saca de su remito, lo que solo se puede
+        mientras esté EMPAQUETADO (lo decide el estado del remito). El
+        empleado hace falta en ese caso, porque puede cancelarse el remito."""
         with obtener_session() as session:
             prestamo = buscar_por_id(session, Prestamo, id, "el préstamo")
-            if prestamo.estado == EstadoPrestamo.EN_ENVIO:
-                raise ReglaNegocioError("El préstamo está en envío: se cancela desde su remito")
             verificar_transicion(prestamo, EstadoPrestamo.CANCELADO)
-            if prestamo.estado == EstadoPrestamo.APROBADO:
+            if prestamo.estado == EstadoPrestamo.EN_ENVIO:
+                empleado = buscar_por_id(session, Empleado, empleado_id, "el empleado actual")
+                # Un préstamo EN_ENVIO tiene un solo ítem: el de su remito de ida
+                item = session.query(ItemRemito).filter_by(prestamo_id=prestamo.id).first()
+                item.remito.quitar_item(item, empleado, f"Se canceló el préstamo #{prestamo.id}")
+            if prestamo.estado in [EstadoPrestamo.APROBADO, EstadoPrestamo.EN_ENVIO]:
                 prestamo.ejemplar.cambiar_estado(EstadoEjemplar.DISPONIBLE)
             prestamo.estado = EstadoPrestamo.CANCELADO
 

@@ -21,11 +21,11 @@ from ui.socios import PestaniaSocios
 from ui.catalogo import PestaniaCatalogo
 from ui.ejemplares import PestaniaEjemplares
 from ui.prestamos import PestaniaPrestamos
+from ui.remitos import PestaniaRemitos
 
-# Pestañas que todavía no tienen su clase en ui/ (se completan en las fases 5 a 7)
+# Pestañas que todavía no tienen su clase en ui/ (se completan en las fases 6 y 7)
 PESTANIAS_PENDIENTES = [
     "Reservas",
-    "Remitos",
     "Consulta de disponibilidad",
     "Reportes",
 ]
@@ -77,6 +77,7 @@ def main():
         (PestaniaCatalogo(notebook), "Catálogo"),
         (PestaniaEjemplares(notebook), "Ejemplares"),
         (PestaniaPrestamos(notebook, empleado_actual), "Préstamos"),
+        (PestaniaRemitos(notebook, empleado_actual), "Remitos"),
     ]
     for pestania, nombre in pestanias:
         notebook.add(pestania, text=nombre)

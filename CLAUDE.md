@@ -38,7 +38,7 @@ Respondé siempre en español.
 | `dataclasses`, `typing` | Clases normales |
 | `pytest.mark.parametrize`, fixtures | Clases `TestXxx`, bucles `for` con `pytest.raises` y funciones auxiliares |
 | `unittest`, `mock` | Solo `pytest` |
-| `Toplevel`, `StringVar`, `tkcalendar`, `customtkinter` | Un `ttk.Notebook` con pestañas, `entry.get()`, fechas como `Entry` en formato dd/mm/aaaa |
+| `Toplevel`, `StringVar`, `tkcalendar`, `customtkinter` | Un `ttk.Notebook` con pestañas, `entry.get()`, fechas como `ttk.Combobox` editable (lista de días recientes y texto dd/mm/aaaa) |
 | `logging`, `os`, `pathlib`, `argparse` | No usar |
 
 ### Excepciones ya aprobadas (necesarias y mínimas)
@@ -106,7 +106,7 @@ Cada carpeta de código lleva un `__init__.py` vacío.
 - Listados en `ttk.Treeview`; selecciones con `ttk.Combobox` (y validar igualmente que el valor esté entre las opciones); campos de texto con `ttk.Entry`.
 - Validación en la interfaz, según los apuntes ("Validar texto" y ejercicios 1 a 6): `validate="key"` con `validatecommand` para impedir caracteres imposibles en campos numéricos, y evento `<FocusOut>` para mostrar una advertencia **en rojo debajo del campo**. Al enviar, `messagebox.showerror` con la lista de errores.
 - **Ojo con el ejemplo de los apuntes:** `new_value.isnumeric() and int(new_value) >= 0` rechaza la cadena vacía y el usuario no puede borrar el campo. La validación en vivo debe aceptar `""`; la verificación estricta ocurre al enviar.
-- Fechas ingresadas: `Entry` en formato dd/mm/aaaa (como el ejercicio 4). Siempre que se pueda, las fechas las pone el sistema.
+- Fechas ingresadas: `ttk.Combobox` **sin** `state="readonly"` (`PestaniaBase.crear_campo_fecha`): se despliega con hoy y los días anteriores, y también se escribe en formato dd/mm/aaaa (como el ejercicio 4). Siempre que se pueda, las fechas las pone el sistema.
 - **Usuarios** (de la propuesta): el personal opera los procesos; los socios consultan disponibilidad y catálogo, para lo cual hay una pestaña de consulta. La autenticación está fuera de alcance.
 - **Empleado actual.** No hay login: arriba de la ventana principal un `Combobox` de empleado actual define quién registra los `MovimientoRemito` y las demás operaciones. Mientras no haya uno elegido, las operaciones se bloquean con un mensaje.
 
@@ -116,20 +116,21 @@ Se aplican **State** y **Strategy**, siguiendo el capítulo "Patrones State y St
 ### State — ciclo de vida del Remito
 - Contexto: `Remito` (modelo). Estados en `patrones/estado_remito.py`: `EstadoRemitoBase` (clase abstracta con `ABC`) y `RemitoEmpaquetado`, `RemitoDespachado`, `RemitoEnTransito`, `RemitoRecibido`, `RemitoCancelado`, `RemitoExtraviado`.
 - Mismo esquema que el semáforo de los apuntes: el contexto tiene `cambiar_estado()`, cada estado tiene `entrar/salir`, y **el estado actual decide la transición** (`avanzar` equivale al `siguiente` del semáforo).
-- En la clase base, `avanzar`, `cancelar` y `extraviar` lanzan `TransicionInvalidaError`; cada estado concreto sobrescribe solo las que admite.
+- En la clase base, `avanzar`, `cancelar`, `extraviar` y `quitar_item` lanzan `TransicionInvalidaError`; cada estado concreto sobrescribe solo las que admite.
 - Persistencia: el remito guarda solo el texto del estado (`estado = Column(String(20))`). `Remito.estado_actual` (`@property`) devuelve la instancia desde un diccionario `{EstadoRemito.EMPAQUETADO: RemitoEmpaquetado(), ...}`. Los estados no guardan datos propios. Los estados no importan el modelo (reciben el remito por parámetro), para evitar imports circulares.
 - Prohibido decidir transiciones con `if/elif` sobre `remito.estado` fuera de esas clases.
 
-| Estado | `avanzar` | `cancelar` | `extraviar` |
-|---|---|---|---|
-| EMPAQUETADO | → DESPACHADO | → CANCELADO | ✗ |
-| DESPACHADO | → EN_TRANSITO | ✗ | ✗ |
-| EN_TRANSITO | → RECIBIDO | ✗ | → EXTRAVIADO |
-| RECIBIDO / CANCELADO / EXTRAVIADO | ✗ (finales) | ✗ | ✗ |
+| Estado | `avanzar` | `cancelar` | `extraviar` | `quitar_item` |
+|---|---|---|---|---|
+| EMPAQUETADO | → DESPACHADO | → CANCELADO | ✗ | saca el ítem; si era el único → CANCELADO |
+| DESPACHADO | → EN_TRANSITO | ✗ | ✗ | ✗ |
+| EN_TRANSITO | → RECIBIDO | ✗ | → EXTRAVIADO | ✗ |
+| RECIBIDO / CANCELADO / EXTRAVIADO | ✗ (finales) | ✗ | ✗ | ✗ |
 
 - Cada cambio crea un `MovimientoRemito` (fecha-hora, estado anterior, estado nuevo, empleado, observación). El remito nace con su primer movimiento (EMPAQUETADO).
 - Devolver un préstamo interbibliotecario genera un remito `DEVOLUCION` hacia la sede propietaria.
-- **Efectos colaterales (confirmados por el grupo):** DESPACHADO → `fecha_despacho` = hoy y ejemplares EN_TRANSITO. RECIBIDO → `fecha_recepcion` = hoy; si es IDA, el préstamo pasa a ACTIVO (lo hace `RemitoDAO`, ver abajo); si es DEVOLUCION, los ejemplares quedan DISPONIBLE (el préstamo ya quedó DEVUELTO cuando el socio devolvió). CANCELADO → ejemplares DISPONIBLE y préstamo CANCELADO. EXTRAVIADO → ejemplares EXTRAVIADO, se crea una `IncidenciaEnvio` de tipo EXTRAVIO y, si es IDA, el préstamo pasa a CANCELADO.
+- **Reparto de los efectos:** los estados (`entrar`) tocan el remito y sus ejemplares; los préstamos los actualiza `RemitoDAO` con `verificar_transicion` de `PrestamoDAO`, así el diccionario de transiciones del préstamo queda en un solo lugar.
+- **Efectos colaterales (confirmados por el grupo):** DESPACHADO → `fecha_despacho` = hoy y ejemplares EN_TRANSITO. RECIBIDO → `fecha_recepcion` = hoy; si es IDA, el préstamo pasa a ACTIVO (lo hace `RemitoDAO`, ver abajo); si es DEVOLUCION, los ejemplares quedan DISPONIBLE (el préstamo ya quedó DEVUELTO cuando el socio devolvió). CANCELADO → si es IDA, ejemplares DISPONIBLE y préstamo CANCELADO; si es DEVOLUCION, el préstamo sigue DEVUELTO y el ejemplar no cambia (espera un nuevo remito de devolución). EXTRAVIADO → ejemplares EXTRAVIADO, se crea una `IncidenciaEnvio` de tipo EXTRAVIO y, si es IDA, el préstamo pasa a CANCELADO.
 - **Activación del préstamo interbibliotecario (EN_ENVIO → ACTIVO).** Los estados del remito **no conocen ni importan** `EstrategiaPrestamo` ni `ESTRATEGIAS`, y la firma de `avanzar(empleado, observacion)` no cambia. Después de `avanzar()`, si el remito quedó RECIBIDO y es de tipo IDA, `RemitoDAO` recorre sus ítems y por cada préstamo llama a `prestamo.activar(ESTRATEGIAS[prestamo.tipo])`. Todo ocurre en la misma sesión que el cambio de estado, con un solo commit: si algo falla, `obtener_session()` hace rollback de todo. Los demás efectos colaterales siguen como se describen arriba.
 
 ### Strategy — plazo y multa según el tipo de préstamo
@@ -149,7 +150,7 @@ Constantes de texto + un diccionario de transiciones permitidas validado en `Pre
 - **Reserva del ejemplar.**
   - *Interbibliotecario:* al aprobar, el ejemplar pasa a RESERVADO (así dos préstamos aprobados no pueden pedir el mismo). Pasa a PRESTADO cuando el remito IDA queda RECIBIDO y se llama a `activar()`. Si el préstamo se cancela, vuelve a DISPONIBLE.
   - *Local:* `PrestamoDAO.aprobar()` valida que el ejemplar esté DISPONIBLE y llama a `activar(estrategia)` en la misma operación. El ejemplar pasa directo a PRESTADO, sin pasar por RESERVADO. El estado APROBADO del local es transitorio, pero se mantiene en el diccionario de transiciones para que el flujo sea igual en los dos tipos.
-- **Cancelación.** Desde SOLICITADO o APROBADO no hay remito: solo se libera el ejemplar. Desde EN_ENVIO solo se permite si el remito sigue EMPAQUETADO, y se cancela junto con el remito; si ya fue despachado o está en tránsito, se rechaza con `ReglaNegocioError`.
+- **Cancelación.** Desde SOLICITADO o APROBADO no hay remito: solo se libera el ejemplar. Desde EN_ENVIO solo se permite si el remito sigue EMPAQUETADO (lo decide el estado con `quitar_item`): el ítem del préstamo sale del remito y, si era el único, se cancela el remito entero (el ítem queda para el historial). El ejemplar vuelve a DISPONIBLE. Si el remito ya fue despachado, se rechaza con `TransicionInvalidaError`.
 - **Devolución.** Al registrarla, el préstamo pasa a DEVUELTO ese día y se calcula la multa con esa fecha. Si es interbibliotecario, además se crea el remito DEVOLUCION; el ejemplar no vuelve a estar DISPONIBLE hasta que ese remito se recibe en la sede propietaria (pasa a EN_TRANSITO al despacharse).
 
 ## Reglas de negocio (obligatorias)

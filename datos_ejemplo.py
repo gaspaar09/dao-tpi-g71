@@ -2,18 +2,30 @@
 
 Igual que cargar_datos_ejemplo() del ejemplo de biblioteca de los apuntes:
 solo carga si la base está vacía.
+
+Primero se cargan los datos maestros (sedes, socios, catálogo, ejemplares).
+Después los préstamos y remitos se arman con los DAO, igual que desde la
+pantalla, así pasan por las mismas reglas y quedan en estados coherentes:
+hay un préstamo o remito en cada estado para poder probar cada botón.
 """
 
-from datetime import time
+from datetime import date, time, timedelta
 
 from constantes import (DiaSemana, EstadoEjemplar, EstadoFisico, EstadoSede, EstadoSocio,
-                        RolEmpleado, TipoMaterial)
+                        RolEmpleado, TipoIncidencia, TipoMaterial, TipoPrestamo)
+from dao.prestamo_dao import PrestamoDAO
+from dao.remito_dao import RemitoDAO
 from database import obtener_session
 from modelos.sede import Sede, HorarioSede
 from modelos.empleado import Empleado
 from modelos.socio import Socio
 from modelos.catalogo import Autor, Categoria, Libro
 from modelos.ejemplar import Ejemplar
+from modelos.prestamo import Prestamo
+from patrones.estrategia_prestamo import ESTRATEGIAS
+
+LOCAL = TipoPrestamo.LOCAL
+INTER = TipoPrestamo.INTERBIBLIOTECARIO
 
 
 def crear_sede(nombre, direccion, telefono, email):
@@ -32,6 +44,13 @@ def crear_sede(nombre, direccion, telefono, email):
 def cargar_datos_ejemplo():
     """Carga datos de ejemplo. Devuelve True si los cargó o False si la base
     ya tenía datos."""
+    if not cargar_datos_maestros():
+        return False
+    cargar_prestamos_y_remitos()
+    return True
+
+
+def cargar_datos_maestros():
     with obtener_session() as session:
         if session.query(Sede).count() > 0:
             return False
@@ -99,6 +118,8 @@ def cargar_datos_ejemplo():
             ("ANT-001", antologia, norte),
             ("MOR-001", morel, sur), ("MOR-002", morel, sur),
             ("REV-001", revista, central), ("REV-002", revista, norte),
+            ("FIC-003", ficciones, central), ("ANT-002", antologia, central),
+            ("MOR-003", morel, norte), ("RAY-004", rayuela, sur), ("REV-003", revista, sur),
         ]
         for codigo, libro, sede in reparto:
             ejemplares.append(Ejemplar(codigo_inventario=codigo, libro=libro, sede=sede,
@@ -106,3 +127,87 @@ def cargar_datos_ejemplo():
 
         session.add_all([central, norte, sur] + empleados + socios + ejemplares)
         return True
+
+
+# ------------------------------------------------- préstamos y remitos
+
+def buscar_id(clase, **filtro):
+    """Id de la fila que cumple el filtro (por ejemplo, codigo_inventario="RAY-001")."""
+    with obtener_session() as session:
+        return session.query(clase).filter_by(**filtro).first().id
+
+
+def solicitar(tipo, nro_socio, codigo, origen, destino):
+    """Registra la solicitud con PrestamoDAO y devuelve el id del préstamo."""
+    PrestamoDAO().solicitar(tipo, buscar_id(Socio, nro_socio=nro_socio),
+                            buscar_id(Ejemplar, codigo_inventario=codigo),
+                            buscar_id(Sede, nombre=origen), buscar_id(Sede, nombre=destino))
+    return PrestamoDAO().listar()[0]['id']
+
+
+def aprobar(tipo, nro_socio, codigo, origen, destino):
+    prestamo_id = solicitar(tipo, nro_socio, codigo, origen, destino)
+    PrestamoDAO().aprobar(prestamo_id)
+    return prestamo_id
+
+
+def crear_remito(origen, destino, prestamos_ids, legajo):
+    RemitoDAO().crear_ida(buscar_id(Sede, nombre=origen), buscar_id(Sede, nombre=destino),
+                          prestamos_ids, buscar_id(Empleado, legajo=legajo))
+    return RemitoDAO().listar()[0]['id']
+
+
+def cargar_prestamos_y_remitos():
+    """Un caso por estado. Los ejemplares que no se usan acá (REV-001 y
+    FIC-002 al final, MOR-003, RAY-004 y REV-003) quedan libres para probar."""
+    prestamos = PrestamoDAO()
+    remitos = RemitoDAO()
+    central, norte, sur = "Biblioteca Central", "Sede Norte", "Sede Sur"
+    laura = buscar_id(Empleado, legajo="E001")
+    martin = buscar_id(Empleado, legajo="E002")
+
+    # Préstamos locales: activo, vencido, solicitado (sin aprobar) y cancelado
+    aprobar(LOCAL, 1, "RAY-001", central, central)
+    vencido = aprobar(LOCAL, 2, "MOR-001", sur, sur)
+    solicitar(LOCAL, 3, "FIC-001", central, central)
+    prestamos.cancelar(solicitar(LOCAL, 1, "REV-001", central, central))
+
+    # Un préstamo vencido sin esperar 31 días: se corre la fecha de préstamo
+    # 40 días atrás y el vencimiento lo vuelve a calcular la estrategia
+    with obtener_session() as session:
+        prestamo = session.query(Prestamo).filter_by(id=vencido).first()
+        prestamo.fecha_prestamo = date.today() - timedelta(days=40)
+        prestamo.fecha_vencimiento = ESTRATEGIAS[prestamo.tipo].calcular_vencimiento(prestamo.fecha_prestamo)
+
+    # Interbibliotecarios aprobados que esperan remito (se pueden agrupar en uno)
+    aprobar(INTER, 3, "RAY-002", central, norte)
+    aprobar(INTER, 2, "FIC-003", central, norte)
+
+    # Remito EMPAQUETADO: se puede cancelar, o cancelar su préstamo desde Préstamos
+    crear_remito(norte, sur, [aprobar(INTER, 1, "ANT-001", norte, sur)], "E002")
+
+    # Remito DESPACHADO: ya no se puede cancelar
+    remito = crear_remito(norte, central, [aprobar(INTER, 2, "REV-002", norte, central)], "E002")
+    remitos.avanzar(remito, martin, "Sale con el transporte de la mañana")
+
+    # Remito EN_TRANSITO con una demora: se puede recibir o dar por extraviado
+    remito = crear_remito(sur, central, [aprobar(INTER, 3, "MOR-002", sur, central)], "E003")
+    remitos.avanzar(remito, martin, "")
+    remitos.avanzar(remito, martin, "")
+    remitos.registrar_incidencia(remito, TipoIncidencia.DEMORA, date.today().strftime("%d/%m/%Y"),
+                                 "El transporte se retrasó por lluvia")
+
+    # Remito RECIBIDO: el préstamo quedó ACTIVO con el plazo interbibliotecario
+    remito = crear_remito(norte, central, [aprobar(INTER, 1, "RAY-003", norte, central)], "E002")
+    for _ in range(3):
+        remitos.avanzar(remito, laura, "")
+
+    # Remito CANCELADO: el préstamo se canceló y el ejemplar volvió a estar disponible
+    remito = crear_remito(sur, norte, [aprobar(INTER, 2, "FIC-002", sur, norte)], "E003")
+    remitos.cancelar(remito, laura, "El socio ya no lo necesita")
+
+    # Remito EXTRAVIADO: ejemplar perdido e incidencia de extravío
+    remito = crear_remito(central, sur, [aprobar(INTER, 3, "ANT-002", central, sur)], "E001")
+    remitos.avanzar(remito, laura, "")
+    remitos.avanzar(remito, laura, "")
+    remitos.extraviar(remito, laura, "El paquete no llegó a destino")

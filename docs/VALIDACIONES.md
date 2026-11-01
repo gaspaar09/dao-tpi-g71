@@ -86,7 +86,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 - `fecha_solicitud` = hoy (sistema). `fecha_prestamo` y `fecha_vencimiento` las fija el sistema cuando el préstamo pasa a ACTIVO; el vencimiento lo calcula la estrategia (31 días local, 38 interbibliotecario) y es siempre posterior a `fecha_prestamo`. El usuario no las ingresa.
 - Transiciones de estado solo las permitidas. VENCIDO no se guarda: se calcula.
 - Al aprobar, el ejemplar debe seguir DISPONIBLE. Interbibliotecario: pasa a RESERVADO hasta que el remito IDA se recibe; al cancelar vuelve a DISPONIBLE. Local: el préstamo se activa en la misma aprobación y el ejemplar pasa directo a PRESTADO.
-- Cancelar desde EN_ENVIO solo si el remito está EMPAQUETADO; si ya fue despachado o está en tránsito, se rechaza.
+- Cancelar desde EN_ENVIO solo si el remito está EMPAQUETADO: el ejemplar sale del remito (si era el único, se cancela el remito). Si ya fue despachado o está en tránsito, se rechaza.
 
 ### Reserva
 Socio ACTIVO. Libro existente. `sede_retiro` ACTIVA. `fecha_reserva` = hoy. `fecha_vencimiento` la calcula el sistema: hoy + 45 días mientras está PENDIENTE; al asignarle un ejemplar se reescribe como hoy + 2 días (plazo de retiro). No duplicar una reserva PENDIENTE/DISPONIBLE del mismo socio y libro *(supuesto)*. Cancelar solo si está PENDIENTE o DISPONIBLE.

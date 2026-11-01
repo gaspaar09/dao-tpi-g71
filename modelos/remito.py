@@ -1,7 +1,6 @@
 """Modelos del Remito y su detalle: ítems, movimientos e incidencias.
 
-Los métodos del patrón State (estado_actual, cambiar_estado, avanzar_estado,
-cancelar, extraviar) se agregan en la Fase 5 junto con patrones/estado_remito.py.
+El Remito es el contexto del patrón State (patrones/estado_remito.py).
 """
 
 from datetime import date, datetime
@@ -12,6 +11,7 @@ from sqlalchemy.orm import relationship
 from config import LARGO_ESTADO, LARGO_OBSERVACION_MOVIMIENTO, LARGO_DESCRIPCION_INCIDENCIA
 from constantes import EstadoRemito
 from database import Base
+from patrones.estado_remito import ESTADOS_REMITO
 
 
 class Remito(Base):
@@ -41,6 +41,38 @@ class Remito(Base):
 
     def __str__(self):
         return f"{self.nro_remito} ({self.tipo}) - {self.estado}"
+
+    # ------------------------------------------------ patrón State (contexto)
+
+    @property
+    def estado_actual(self):
+        """En la base se guarda solo el texto: acá se obtiene la instancia del estado."""
+        return ESTADOS_REMITO[self.estado]
+
+    def cambiar_estado(self, nuevo, empleado, observacion):
+        """Como en el semáforo: sale del estado anterior y entra al nuevo.
+        Cada cambio deja un MovimientoRemito (trazabilidad del envío)."""
+        anterior = self.estado
+        # Un remito recién creado todavía no tiene estado del que salir
+        if anterior is not None:
+            self.estado_actual.salir(self)
+        self.estado = nuevo
+        self.movimientos.append(MovimientoRemito(estado_anterior=anterior, estado_nuevo=nuevo,
+                                                 empleado=empleado, observacion=observacion))
+        self.estado_actual.entrar(self, empleado, observacion)
+
+    # El remito no decide nada: delega en su estado actual
+    def avanzar_estado(self, empleado, observacion):
+        self.estado_actual.avanzar(self, empleado, observacion)
+
+    def cancelar(self, empleado, observacion):
+        self.estado_actual.cancelar(self, empleado, observacion)
+
+    def extraviar(self, empleado, observacion):
+        self.estado_actual.extraviar(self, empleado, observacion)
+
+    def quitar_item(self, item, empleado, observacion):
+        self.estado_actual.quitar_item(self, item, empleado, observacion)
 
 
 class ItemRemito(Base):

@@ -6,6 +6,7 @@ el manejo de errores se escriben una sola vez (herencia, vista en clase).
 """
 
 import tkinter as tk
+from datetime import date, timedelta
 from tkinter import ttk, messagebox
 
 from excepciones import ValidacionError, ReglaNegocioError
@@ -14,8 +15,12 @@ from validadores import solo_digitos
 
 class PestaniaBase(ttk.Frame):
 
-    def __init__(self, padre):
+    def __init__(self, padre, empleado_actual=None):
+        """empleado_actual es una función que devuelve el id del empleado
+        elegido arriba de la ventana (o None). La reciben solo las pestañas
+        cuyas operaciones quedan registradas a nombre de un empleado."""
         super().__init__(padre, padding=10)
+        self.empleado_actual = empleado_actual
         # nombre -> {'widget', 'error', 'validador', 'etiqueta'}
         self.campos = {}
         # nombre del combo -> {texto mostrado: id}
@@ -48,6 +53,32 @@ class PestaniaBase(ttk.Frame):
         # Al salir del campo se avisa el error sin esperar a guardar
         entry.bind("<FocusOut>", lambda evento: self.validar_campo(nombre))
         return entry
+
+    def caracteres_de_fecha(self, nuevo_valor):
+        """Validación en vivo de una fecha: solo dígitos y "/", hasta dd/mm/aaaa.
+        Acepta "" para poder borrar; el control estricto es al guardar."""
+        if len(nuevo_valor) > 10:
+            return False
+        return nuevo_valor == "" or solo_digitos(nuevo_valor.replace("/", ""))
+
+    def crear_campo_fecha(self, contenedor, nombre, etiqueta, fila, validador, dias=30):
+        """Fecha que se elige o se escribe: un Combobox sin state="readonly"
+        se despliega con hoy y los días anteriores, y también acepta texto
+        dd/mm/aaaa. Para el resto del formulario es un campo de texto más."""
+        ttk.Label(contenedor, text=etiqueta).grid(row=fila * 2, column=0, sticky="w", padx=5, pady=(5, 0))
+        fechas = [(date.today() - timedelta(days=atras)).strftime("%d/%m/%Y") for atras in range(dias + 1)]
+        combo = ttk.Combobox(contenedor, values=fechas, width=12)
+        combo.grid(row=fila * 2, column=1, sticky="w", padx=5, pady=(5, 0))
+        vcmd = self.register(self.caracteres_de_fecha)
+        combo.config(validate="key", validatecommand=(vcmd, "%P"))
+        combo.set(fechas[0])  # por defecto, hoy
+        error = ttk.Label(contenedor, text="", foreground="red")
+        error.grid(row=fila * 2 + 1, column=1, sticky="w", padx=5)
+        self.campos[nombre] = {'widget': combo, 'error': error, 'validador': validador, 'etiqueta': etiqueta}
+        combo.bind("<FocusOut>", lambda evento: self.validar_campo(nombre))
+        # Al elegir una fecha de la lista se borra el error que hubiera
+        combo.bind("<<ComboboxSelected>>", lambda evento: self.validar_campo(nombre))
+        return combo
 
     def crear_combo(self, contenedor, nombre, etiqueta, fila, cargar_opciones, ancho=33):
         """Combobox de solo lectura. cargar_opciones devuelve [(id, texto)].
@@ -190,6 +221,14 @@ class PestaniaBase(ttk.Frame):
             self.refrescar_todo()
         else:
             self.refrescar()
+        return True
+
+    def hay_empleado(self):
+        """Las operaciones que registran quién las hizo no se permiten sin
+        empleado actual elegido."""
+        if self.empleado_actual is None or self.empleado_actual() is None:
+            messagebox.showerror("Falta el empleado", "Seleccione el empleado actual arriba de la ventana")
+            return False
         return True
 
     def avisar_cambios_a(self, funcion):

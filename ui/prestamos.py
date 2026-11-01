@@ -1,6 +1,6 @@
 """Pestaña de Préstamos: solicitud, aprobación y cancelación."""
 
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 from constantes import TipoPrestamo
 from dao.ejemplar_dao import EjemplarDAO
@@ -15,11 +15,8 @@ CAMPOS = ['tipo', 'socio', 'sede_origen', 'sede_destino', 'ejemplar']
 class PestaniaPrestamos(PestaniaBase):
 
     def __init__(self, padre, empleado_actual):
-        """empleado_actual es una función que devuelve el id del empleado
-        elegido arriba de la ventana, o None si no hay ninguno."""
-        super().__init__(padre)
+        super().__init__(padre, empleado_actual)
         self.dao = PrestamoDAO()
-        self.empleado_actual = empleado_actual
 
         formulario = ttk.Frame(self)
         formulario.pack(fill="x")
@@ -75,14 +72,6 @@ class PestaniaPrestamos(PestaniaBase):
         self.campos['ejemplar']['widget'].set("")
         self.acomodar_destino()
 
-    def hay_empleado(self):
-        """Las operaciones de préstamo quedan registradas a nombre de un
-        empleado: sin empleado actual elegido no se permiten."""
-        if self.empleado_actual() is None:
-            messagebox.showerror("Falta el empleado", "Seleccione el empleado actual arriba de la ventana")
-            return False
-        return True
-
     def registrar(self):
         if not self.hay_empleado():
             return
@@ -101,8 +90,9 @@ class PestaniaPrestamos(PestaniaBase):
 
     def cancelar(self):
         if self.hay_empleado():
-            self.accion_sobre_seleccion(self.dao.cancelar, "¿Cancelar el préstamo seleccionado?",
-                                        "Préstamo cancelado")
+            # Si está en envío hace falta el empleado: puede cancelarse su remito
+            self.accion_sobre_seleccion(lambda id: self.dao.cancelar(id, self.empleado_actual()),
+                                        "¿Cancelar el préstamo seleccionado?", "Préstamo cancelado")
 
     def limpiar(self):
         # No hay modificación de préstamos: solo se vacía el formulario

@@ -161,14 +161,7 @@ class TestCancelacion:
         with pytest.raises(ReglaNegocioError, match="CANCELADO no puede pasar a CANCELADO"):
             dao.cancelar(prestamo_id)
 
-    def test_en_envio_se_cancela_desde_el_remito(self):
-        ids = preparar()
-        prestamo_id = solicitar(ids, INTER, ids['norte'])
-        dao.aprobar(prestamo_id)
-        with obtener_session() as session:
-            session.query(Prestamo).filter_by(id=prestamo_id).first().estado = EstadoPrestamo.EN_ENVIO
-        with pytest.raises(ReglaNegocioError, match="desde su remito"):
-            dao.cancelar(prestamo_id)
+    # Cancelar un préstamo EN_ENVIO se prueba en test_remito_dao.py, porque necesita un remito
 
 
 class TestTransiciones:
