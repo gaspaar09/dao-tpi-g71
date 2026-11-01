@@ -4,6 +4,15 @@ import tkinter as tk
 from tkinter import ttk
 
 from database import crear_tablas
+# Se importan los modelos para que Base los conozca antes de crear las tablas
+import modelos.sede
+import modelos.empleado
+import modelos.socio
+import modelos.catalogo
+import modelos.ejemplar
+import modelos.prestamo
+import modelos.reserva
+import modelos.remito
 
 # Una pestaña por módulo. En la Fase 3 cada Frame vacío se reemplaza
 # por su clase de la carpeta ui/.

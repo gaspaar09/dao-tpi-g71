@@ -202,7 +202,7 @@ Cada uno como función en `reportes/`: consulta con `session.query` y relaciones
 
 ## Plan de trabajo (fases; cada una incluye su pestaña de la UI para poder mostrarla)
 0. **Setup:** `.venv`, `requirements.txt`, `.gitignore` (`.venv/`, `__pycache__/`, `*.db`, `.pytest_cache/`, `.DS_Store`), estructura de carpetas, `database.py` (copiando la configuración de los apuntes), `constantes.py`, `excepciones.py` y ventana principal vacía.
-1. **Modelos:** entidades SQLAlchemy según el diagrama y creación de tablas. Además, los modelos implementan los métodos del diagrama: `Socio.esta_habilitado()` e `inhabilitar()`, `Ejemplar.esta_disponible()` y `cambiar_estado(nuevo)` (valida que `nuevo` sea una constante de `EstadoEjemplar`), `Sede.dar_de_baja()` y `esta_activa()`, `Reserva.cancelar()`, y los de `Prestamo`, `Multa` y `Remito`.
+1. **Modelos:** entidades SQLAlchemy según el diagrama y creación de tablas. Además, los modelos implementan los métodos del diagrama: `Socio.esta_habilitado()` e `inhabilitar()`, `Ejemplar.esta_disponible()` y `cambiar_estado(nuevo)` (valida que `nuevo` sea una constante de `EstadoEjemplar`), `Sede.dar_de_baja()` y `esta_activa()`, `Reserva.cancelar()`, y los de `Prestamo` y `Multa`. Los métodos de State del `Remito` (`estado_actual`, `cambiar_estado`, `avanzar_estado`, `cancelar`, `extraviar`) se agregan en la Fase 5, junto con `patrones/estado_remito.py`.
 2. **Validadores** y sus tests.
 3. **ABM:** sedes (con horarios), empleados, socios, autores y categorías, libros y ejemplares, con sus DAO y pestañas.
 4. **Préstamos** + Strategy (vencimiento y multas).
