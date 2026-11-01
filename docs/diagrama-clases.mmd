@@ -11,6 +11,7 @@ classDiagram
         +int idSede
         +String nombre
         +String direccion
+        +String prefijoPais
         +String telefono
         +String email
         +EstadoSede estado
@@ -34,6 +35,7 @@ classDiagram
         +String nombre
         +String apellido
         +String email
+        +String prefijoPais
         +String telefono
         +Date fechaAlta
         +EstadoSocio estado
@@ -74,6 +76,7 @@ classDiagram
         +Date fechaVencimiento
         +validarPrestamo()
         +estaVencido() boolean
+        +estadoEfectivo() EstadoPrestamo
         +activar(EstrategiaPrestamo estrategia)
     }
     class Reserva {
