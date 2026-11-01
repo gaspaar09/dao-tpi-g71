@@ -22,6 +22,10 @@ class PestaniaBase(ttk.Frame):
         self.opciones_combo = {}
         self.filas = []            # última lista que devolvió el DAO
         self.id_editando = None    # None = alta; un id = modificación
+        # Función que refresca todas las pestañas (la asigna main.py). Una
+        # operación puede cambiar datos que muestra otra pestaña: por ejemplo,
+        # aprobar un préstamo cambia el estado del ejemplar.
+        self.refrescar_todo = None
 
     # ------------------------------------------------------------ campos
 
@@ -182,8 +186,15 @@ class PestaniaBase(ttk.Frame):
             messagebox.showerror("No se pudo completar la operación", str(error))
             return False
         messagebox.showinfo("Listo", mensaje_ok)
-        self.refrescar()
+        if self.refrescar_todo is not None:
+            self.refrescar_todo()
+        else:
+            self.refrescar()
         return True
+
+    def avisar_cambios_a(self, funcion):
+        """main.py indica qué función llamar para refrescar todas las pestañas."""
+        self.refrescar_todo = funcion
 
     def accion_sobre_seleccion(self, accion, pregunta, mensaje_ok):
         """Para bajas y eliminaciones: pide confirmación y llama accion(id)."""

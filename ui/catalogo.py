@@ -31,6 +31,13 @@ class PestaniaCatalogo(ttk.Frame):
         self.autores.refrescar()
         self.categorias.refrescar()
 
+    def avisar_cambios_a(self, funcion):
+        # Mismo método que PestaniaBase (polimorfismo): main.py no necesita
+        # saber que esta pestaña tiene sub-pestañas
+        self.libros.avisar_cambios_a(funcion)
+        self.autores.avisar_cambios_a(funcion)
+        self.categorias.avisar_cambios_a(funcion)
+
 
 class PestaniaLibros(PestaniaBase):
     CAMPOS = ['isbn', 'titulo', 'editorial', 'anio', 'idioma', 'tipo_material', 'categoria']

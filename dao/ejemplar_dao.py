@@ -46,6 +46,17 @@ class EjemplarDAO:
                 raise ReglaNegocioError(f"No se puede dar de baja un ejemplar {ejemplar.estado}")
             ejemplar.cambiar_estado(EstadoEjemplar.BAJA)
 
+    def opciones_disponibles(self, sede_id):
+        """Ejemplares DISPONIBLE de una sede, para elegir en un préstamo."""
+        if sede_id is None:
+            return []
+        with obtener_session() as session:
+            ejemplares = (session.query(Ejemplar)
+                          .filter_by(sede_id=sede_id, estado=EstadoEjemplar.DISPONIBLE)
+                          .order_by(Ejemplar.codigo_inventario).all())
+            return [(ejemplar.id, f"{ejemplar.codigo_inventario} - {ejemplar.libro.titulo}")
+                    for ejemplar in ejemplares]
+
     def listar(self):
         with obtener_session() as session:
             ejemplares = session.query(Ejemplar).order_by(Ejemplar.codigo_inventario).all()
