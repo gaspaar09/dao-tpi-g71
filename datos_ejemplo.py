@@ -25,6 +25,7 @@ from modelos.catalogo import Autor, Categoria, Libro
 from modelos.ejemplar import Ejemplar
 from modelos.prestamo import Prestamo
 from modelos.reserva import Reserva
+from modelos.remito import Remito
 from patrones.estrategia_prestamo import ESTRATEGIAS
 
 LOCAL = TipoPrestamo.LOCAL
@@ -205,6 +206,12 @@ def cargar_prestamos_y_remitos():
     remito = crear_remito(norte, central, [aprobar(INTER, 1, "RAY-003", norte, central)], "E002")
     for _ in range(3):
         remitos.avanzar(remito, laura, "")
+    # Para que el reporte de movimiento tenga un tiempo de tránsito distinto de 0:
+    # se simula que se armó hace 4 días y se despachó hace 3
+    with obtener_session() as session:
+        recibido = session.query(Remito).filter_by(id=remito).first()
+        recibido.fecha_creacion = date.today() - timedelta(days=4)
+        recibido.fecha_despacho = date.today() - timedelta(days=3)
 
     # Remito CANCELADO: el préstamo se canceló y el ejemplar volvió a estar disponible
     remito = crear_remito(sur, norte, [aprobar(INTER, 2, "FIC-002", sur, norte)], "E003")

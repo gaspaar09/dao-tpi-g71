@@ -24,12 +24,8 @@ from ui.ejemplares import PestaniaEjemplares
 from ui.prestamos import PestaniaPrestamos
 from ui.reservas import PestaniaReservas
 from ui.remitos import PestaniaRemitos
-
-# Pestañas que todavía no tienen su clase en ui/ (se completan en la fase 7)
-PESTANIAS_PENDIENTES = [
-    "Consulta de disponibilidad",
-    "Reportes",
-]
+from ui.consulta import PestaniaConsulta
+from ui.reportes import PestaniaReportes
 
 
 def main():
@@ -43,7 +39,7 @@ def main():
     ttk.Style().theme_use("clam")
 
     # Empleado actual: no hay login, así que se elige acá quién opera.
-    # Lo usan las operaciones que registran quién las hizo (fases 4 a 6).
+    # Lo usan las operaciones que registran quién las hizo (préstamos, reservas, devoluciones y remitos).
     marco_superior = ttk.Frame(ventana, padding=10)
     marco_superior.pack(fill="x")
     ttk.Label(marco_superior, text="Empleado actual:").pack(side="left")
@@ -82,11 +78,11 @@ def main():
         (PestaniaPrestamos(notebook, empleado_actual), "Préstamos"),
         (PestaniaReservas(notebook, empleado_actual), "Reservas"),
         (PestaniaRemitos(notebook, empleado_actual), "Remitos"),
+        (PestaniaConsulta(notebook), "Consulta de disponibilidad"),
+        (PestaniaReportes(notebook), "Reportes"),
     ]
     for pestania, nombre in pestanias:
         notebook.add(pestania, text=nombre)
-    for nombre in PESTANIAS_PENDIENTES:
-        notebook.add(ttk.Frame(notebook), text=nombre)
 
     def refrescar_todas():
         """Recarga las tablas de todas las pestañas y la lista de empleados."""

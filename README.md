@@ -55,7 +55,18 @@ Se abre la ventana principal. La primera vez se crea el archivo `biblioteca.db` 
 ```
 python -m pytest
 ```
-Hay que ejecutarlo desde la raíz del proyecto, así pytest encuentra los módulos. Mientras no haya tests, pytest informa "no tests ran"; no es un error.
+Hay que ejecutarlo desde la raíz del proyecto, así pytest encuentra los módulos.
+
+## Primer recorrido
+1. Arriba de la ventana, tocá **Cargar datos de ejemplo** (solo carga si la base está vacía). Trae sedes, socios, catálogo y ejemplares, y además préstamos, remitos y reservas en cada uno de sus estados.
+2. Elegí el **Empleado actual**: sin él no se pueden registrar préstamos, reservas, devoluciones ni remitos.
+3. Pestañas:
+   - **Sedes, Empleados, Socios, Catálogo, Ejemplares:** altas, modificaciones y bajas.
+   - **Préstamos:** solicitar, aprobar, cancelar, registrar la devolución y marcar multas pagadas.
+   - **Reservas:** reservar un título en una sede, retirar (crea el préstamo) y cancelar.
+   - **Remitos:** armar el envío, avanzar su estado, cancelar, dar por extraviado, historial e incidencias.
+   - **Consulta de disponibilidad:** buscar por título, autor o ISBN y filtrar por sede; no pide empleado.
+   - **Reportes:** elegir uno de los 6 reportes en el desplegable; se actualiza solo después de cada operación.
 
 ## En VS Code
 1. Abrí la carpeta del proyecto.
@@ -94,4 +105,4 @@ docs/            enunciado, propuesta, diagrama, validaciones y apuntes
 - `docs/VALIDACIONES.md`: checklist de validaciones y guion de pruebas para la defensa.
 
 ## Estado
-Fase 0 (setup) terminada: la ventana abre con las pestañas vacías. Las siguientes fases están en `CLAUDE.md`, sección "Plan de trabajo".
+Fases 0 a 7 terminadas: todos los procesos obligatorios, los dos patrones (State y Strategy) y los 6 reportes. Falta la fase 8 (pasada completa por el checklist de validaciones y ensayo de la defensa), ver `CLAUDE.md`, sección "Plan de trabajo".

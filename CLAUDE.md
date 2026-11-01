@@ -202,6 +202,15 @@ Cada uno como función en `reportes/`: consulta con `session.query` y relaciones
 5. Tasa de envíos exitosos e incidencias.
 6. Movimiento de ejemplares entre sedes: envíos por par origen/destino y tiempo promedio de tránsito (`fecha_recepcion - fecha_despacho`).
 
+**Implementación (supuestos del grupo).** Cada función devuelve `(columnas, filas)`; `reportes/__init__.py` las reúne en `REPORTES` para el desplegable. La pestaña vuelve a generar el reporte elegido después de cada operación.
+- (2) Solo aparecen socios con algún préstamo vencido hoy o alguna multa; se ordena por deuda pendiente.
+- (3) Cuentan todas las solicitudes interbibliotecarias, también las canceladas (miden la demanda); "completado" = ACTIVO o DEVUELTO. Muestra la ruta más pedida.
+- (4) Usa el mismo conteo por estado que la Consulta de disponibilidad (`sumar_ejemplar` de `dao/consulta_dao.py`).
+- (5) Tasa de éxito = recibidos / (recibidos + extraviados): un remito cancelado nunca salió y no cuenta como envío fallido. "—" si no hay envíos terminados.
+- (6) Se excluyen los remitos cancelados; el promedio es solo sobre los recibidos, con 2 decimales, y "—" si no hay.
+
+**Consulta de disponibilidad** (`dao/consulta_dao.py`, pestaña sin empleado): una fila por título y sede con los ejemplares por estado; filtra por texto (título, autor o ISBN, sin distinguir mayúsculas) y por sede. Un título sin ejemplares aparece con 0. Antes de mostrar corre `procesar_vencimientos()`.
+
 ## Plan de trabajo (fases; cada una incluye su pestaña de la UI para poder mostrarla)
 0. **Setup:** `.venv`, `requirements.txt`, `.gitignore` (`.venv/`, `__pycache__/`, `*.db`, `.pytest_cache/`, `.DS_Store`), estructura de carpetas, `database.py` (copiando la configuración de los apuntes), `constantes.py`, `excepciones.py` y ventana principal vacía.
 1. **Modelos:** entidades SQLAlchemy según el diagrama y creación de tablas. Además, los modelos implementan los métodos del diagrama: `Socio.esta_habilitado()` e `inhabilitar()`, `Ejemplar.esta_disponible()` y `cambiar_estado(nuevo)` (valida que `nuevo` sea una constante de `EstadoEjemplar`), `Sede.dar_de_baja()` y `esta_activa()`, `Reserva.cancelar()`, y los de `Prestamo` y `Multa`. Los métodos de State del `Remito` (`estado_actual`, `cambiar_estado`, `avanzar_estado`, `cancelar`, `extraviar`) se agregan en la Fase 5, junto con `patrones/estado_remito.py`.
