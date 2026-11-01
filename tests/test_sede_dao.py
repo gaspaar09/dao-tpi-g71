@@ -15,7 +15,7 @@ dao = SedeDAO()
 
 def crear_sede(nombre="Central"):
     """Crea una sede válida y devuelve su id."""
-    dao.crear(nombre, "Av. Colón 1200", "351 4210000", "central@biblio.org",
+    dao.crear(nombre, "Avenida Colón 1200", "54", "3514210000", "central@biblio.org",
               DiaSemana.LUNES, "08:00", "18:00")
     for sede in dao.listar():
         if sede['nombre'] == nombre:
@@ -34,19 +34,21 @@ class TestAltaSede:
 
     def test_email_opcional(self):
         preparar_base_en_memoria()
-        dao.crear("Norte", "Calle 1", "351 4000000", "", DiaSemana.LUNES, "08:00", "18:00")
+        dao.crear("Norte", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00")
         assert dao.listar()[0]['email'] == ""
 
     def test_datos_invalidos(self):
         preparar_base_en_memoria()
         casos = [
-            ("", "Calle 1", "351 4000000", "", DiaSemana.LUNES, "08:00", "18:00"),
-            ("Norte", "", "351 4000000", "", DiaSemana.LUNES, "08:00", "18:00"),
-            ("Norte", "Calle 1", "tel-abc", "", DiaSemana.LUNES, "08:00", "18:00"),
-            ("Norte", "Calle 1", "351 4000000", "sin-arroba", DiaSemana.LUNES, "08:00", "18:00"),
-            ("Norte", "Calle 1", "351 4000000", "", "FERIADO", "08:00", "18:00"),
-            ("Norte", "Calle 1", "351 4000000", "", DiaSemana.LUNES, "25:00", "18:00"),
-            ("Norte", "Calle 1", "351 4000000", "", DiaSemana.LUNES, "18:00", "08:00"),
+            ("", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00"),
+            ("12345", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00"),
+            ("Norte", "", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00"),
+            ("Norte", "1234", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00"),
+            ("Norte", "Calle 1", "54", "tel-abc", "", DiaSemana.LUNES, "08:00", "18:00"),
+            ("Norte", "Calle 1", "54", "3514000000", "sin-arroba", DiaSemana.LUNES, "08:00", "18:00"),
+            ("Norte", "Calle 1", "54", "3514000000", "", "FERIADO", "08:00", "18:00"),
+            ("Norte", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "25:00", "18:00"),
+            ("Norte", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "18:00", "08:00"),
         ]
         for caso in casos:
             with pytest.raises(ValidacionError):
@@ -65,9 +67,9 @@ class TestModificarSede:
     def test_modificar_sin_chocar_consigo_misma(self):
         preparar_base_en_memoria()
         sede_id = crear_sede("Central")
-        dao.modificar(sede_id, "central", "Otra dirección 50", "351 4999999", "")
+        dao.modificar(sede_id, "central", "Otra dirección 50", "54", "3514999999", "")
         sede = dao.listar()[0]
-        assert sede['nombre'] == "central"
+        assert sede['nombre'] == "Central"  # se guarda capitalizado
         assert sede['direccion'] == "Otra dirección 50"
 
     def test_modificar_con_nombre_de_otra(self):
@@ -75,14 +77,14 @@ class TestModificarSede:
         crear_sede("Central")
         norte_id = crear_sede("Norte")
         with pytest.raises(ReglaNegocioError, match="Ya existe una sede"):
-            dao.modificar(norte_id, "CENTRAL", "Calle 1", "351 4000000", "")
+            dao.modificar(norte_id, "CENTRAL", "Calle 1", "54", "3514000000", "")
 
     def test_sede_inexistente(self):
         preparar_base_en_memoria()
         with pytest.raises(ReglaNegocioError, match="No se encontró"):
-            dao.modificar(99, "Norte", "Calle 1", "351 4000000", "")
+            dao.modificar(99, "Norte", "Calle 1", "54", "3514000000", "")
         with pytest.raises(ValidacionError, match="Seleccione"):
-            dao.modificar(None, "Norte", "Calle 1", "351 4000000", "")
+            dao.modificar(None, "Norte", "Calle 1", "54", "3514000000", "")
 
 
 class TestHorarios:

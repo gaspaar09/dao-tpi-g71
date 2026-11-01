@@ -7,15 +7,15 @@ from database import obtener_session
 from excepciones import ValidacionError, ReglaNegocioError
 from modelos.catalogo import Libro, Autor, Categoria
 from modelos.reserva import Reserva
-from validadores import validar_isbn, validar_texto, validar_anio_edicion, validar_opcion
+from validadores import validar_isbn, validar_texto_con_letras, validar_solo_letras, validar_anio_edicion, validar_opcion
 
 
 def validar_datos_libro(isbn, titulo, editorial, anio, idioma, tipo_material, autores_ids):
     isbn = validar_isbn(isbn)
-    titulo = validar_texto(titulo, "título", LARGO_TITULO)
-    editorial = validar_texto(editorial, "editorial", LARGO_EDITORIAL)
+    titulo = validar_texto_con_letras(titulo, "título", LARGO_TITULO)
+    editorial = validar_texto_con_letras(editorial, "editorial", LARGO_EDITORIAL)
     anio = validar_anio_edicion(anio)
-    idioma = validar_texto(idioma, "idioma", LARGO_IDIOMA)
+    idioma = validar_solo_letras(idioma, "idioma", 2, LARGO_IDIOMA)
     tipo_material = validar_opcion(tipo_material, TipoMaterial.TODOS, "tipo de material")
     if not autores_ids:
         raise ValidacionError("Seleccione al menos un autor")

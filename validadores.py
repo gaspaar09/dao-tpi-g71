@@ -10,7 +10,9 @@ Sin expresiones regulares: solo métodos de str, int(), float() y date().
 
 from datetime import date, time
 
-from config import LARGO_EMAIL, LARGO_TELEFONO, LARGO_LEGAJO, LARGO_CODIGO_INVENTARIO, MAXIMO_ENTERO, ANIO_MINIMO_EDICION
+from config import (LARGO_EMAIL, LARGO_TELEFONO, LARGO_LEGAJO, LARGO_CODIGO_INVENTARIO, MAXIMO_ENTERO,
+                    ANIO_MINIMO_EDICION, DNI_MINIMO, DNI_MAXIMO)
+from constantes import PaisTelefono
 from excepciones import ValidacionError
 
 # Se comprueba carácter por carácter contra estas cadenas. No se usa
@@ -49,6 +51,16 @@ def validar_texto(valor, campo, maximo, minimo=1):
     return texto
 
 
+def validar_texto_con_letras(valor, campo, maximo, minimo=1):
+    """Para nombres que pueden llevar números ("Sede 9 de Julio") pero no
+    ser solo números o signos."""
+    texto = validar_texto(valor, campo, maximo, minimo)
+    for caracter in texto:
+        if caracter.isalpha():
+            return texto
+    raise ValidacionError(f"El campo {campo} debe contener al menos una letra")
+
+
 def validar_texto_opcional(valor, campo, maximo):
     """Para observaciones y otros campos no obligatorios: vacío devuelve None."""
     texto = normalizar_texto(valor)
@@ -57,11 +69,35 @@ def validar_texto_opcional(valor, campo, maximo):
     return validar_texto(texto, campo, maximo)
 
 
+def capitalizar(texto):
+    """"cArLos pÉrez" -> "Carlos Pérez". Si se escribió todo en mayúsculas
+    se respeta tal cual ("CARLOS")."""
+    if texto.isupper():
+        return texto
+    return texto.title()
+
+
 def validar_solo_letras(valor, campo, minimo, maximo):
-    """Nombres y apellidos: letras (con tildes), espacios, apóstrofo y guion."""
+    """Nombres: letras (con tildes), espacios, apóstrofo y guion.
+    Se guarda con mayúscula inicial en cada palabra."""
     texto = validar_texto(valor, campo, maximo, minimo)
     if not texto.replace(" ", "").replace("-", "").replace("'", "").isalpha():
         raise ValidacionError(f"El campo {campo} solo puede tener letras, espacios, apóstrofo y guion")
+    return capitalizar(texto)
+
+
+def validar_direccion(valor, campo, maximo):
+    """Como un nombre, pero además admite números (la altura de la calle).
+    Tiene que tener al menos una letra."""
+    texto = validar_texto(valor, campo, maximo)
+    tiene_letra = False
+    for caracter in texto:
+        if caracter.isalpha():
+            tiene_letra = True
+        elif caracter not in DIGITOS + " -'":
+            raise ValidacionError(f"El campo {campo} solo puede tener letras, números, espacios, apóstrofo y guion")
+    if not tiene_letra:
+        raise ValidacionError(f"El campo {campo} debe contener al menos una letra")
     return texto
 
 
@@ -106,15 +142,34 @@ def validar_anio_edicion(valor):
 
 # ------------------------------------------------- identificadores y contacto
 
+def formatear_dni(texto):
+    """Pone los puntos de miles: "12345678" -> "12.345.678".
+    Ignora los puntos que ya tenga el texto."""
+    digitos = texto.replace(".", "")
+    grupos = []
+    while len(digitos) > 3:
+        grupos.insert(0, digitos[-3:])
+        digitos = digitos[:-3]
+    if digitos != "":
+        grupos.insert(0, digitos)
+    return ".".join(grupos)
+
+
 def validar_dni(valor):
-    """Se admiten puntos y espacios (12.345.678) y se guardan solo los dígitos."""
-    dni = normalizar_texto(valor).replace(".", "").replace(" ", "")
+    """Se admite con o sin puntos (12.345.678 o 12345678); si tiene puntos,
+    tienen que estar bien ubicados. Se guardan solo los dígitos."""
+    texto = normalizar_texto(valor).replace(" ", "")
+    dni = texto.replace(".", "")
     if dni == "":
         raise ValidacionError("El DNI es obligatorio")
     if not solo_digitos(dni):
         raise ValidacionError("El DNI solo puede tener números")
-    if len(dni) != 7 and len(dni) != 8:
-        raise ValidacionError("El DNI debe tener 7 u 8 dígitos")
+    if "." in texto and texto != formatear_dni(dni):
+        raise ValidacionError("Los puntos del DNI están mal ubicados (ejemplo: 12.345.678)")
+    if dni[0] == "0":
+        raise ValidacionError("El DNI no puede empezar con 0")
+    if int(dni) < DNI_MINIMO or int(dni) > DNI_MAXIMO:
+        raise ValidacionError("El DNI debe estar entre 1.000.000 y 99.999.999")
     return dni
 
 
@@ -135,16 +190,20 @@ def validar_email(valor, campo="email", obligatorio=True):
 
 
 def validar_telefono(valor, campo="teléfono"):
-    telefono = validar_texto(valor, campo, LARGO_TELEFONO)
-    cantidad_digitos = 0
-    for caracter in telefono:
-        if caracter in DIGITOS:
-            cantidad_digitos += 1
-        elif caracter not in " +-()":
-            raise ValidacionError(f"El campo {campo} solo puede tener números, espacios, +, - y paréntesis")
-    if cantidad_digitos < 6 or cantidad_digitos > 15:
-        raise ValidacionError(f"El campo {campo} debe tener entre 6 y 15 dígitos")
+    """Número plano, sin el código de país (se elige aparte): solo dígitos,
+    sin espacios, guiones ni "+"."""
+    telefono = normalizar_texto(valor)
+    if telefono == "":
+        raise ValidacionError(f"El campo {campo} es obligatorio")
+    if not solo_digitos(telefono):
+        raise ValidacionError(f"El campo {campo} solo puede tener números, sin espacios, guiones ni +")
+    if len(telefono) < 6 or len(telefono) > LARGO_TELEFONO:
+        raise ValidacionError(f"El campo {campo} debe tener entre 6 y {LARGO_TELEFONO} dígitos")
     return telefono
+
+
+def validar_prefijo_pais(valor):
+    return validar_opcion(valor, PaisTelefono.TODOS, "país del teléfono")
 
 
 def validar_isbn(valor):

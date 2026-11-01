@@ -3,8 +3,8 @@
 from sqlalchemy import Column, Integer, String, Time, ForeignKey
 from sqlalchemy.orm import relationship
 
-from config import LARGO_NOMBRE_SEDE, LARGO_DIRECCION, LARGO_TELEFONO, LARGO_EMAIL, LARGO_ESTADO
-from constantes import EstadoSede
+from config import LARGO_NOMBRE_SEDE, LARGO_DIRECCION, LARGO_TELEFONO, LARGO_PREFIJO, LARGO_EMAIL, LARGO_ESTADO
+from constantes import EstadoSede, PaisTelefono
 from database import Base
 from excepciones import ReglaNegocioError
 
@@ -16,6 +16,7 @@ class Sede(Base):
     id = Column(Integer, primary_key=True)
     nombre = Column(String(LARGO_NOMBRE_SEDE), unique=True, nullable=False)
     direccion = Column(String(LARGO_DIRECCION), nullable=False)
+    prefijo_pais = Column(String(LARGO_PREFIJO), nullable=False, default=PaisTelefono.ARGENTINA)
     telefono = Column(String(LARGO_TELEFONO), nullable=False)
     email = Column(String(LARGO_EMAIL))
     estado = Column(String(LARGO_ESTADO), nullable=False, default=EstadoSede.ACTIVA)

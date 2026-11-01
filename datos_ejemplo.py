@@ -17,6 +17,7 @@ from modelos.ejemplar import Ejemplar
 
 
 def crear_sede(nombre, direccion, telefono, email):
+    # Todas las sedes son de Argentina: prefijo_pais queda en su valor por defecto (54)
     """Sede abierta de lunes a viernes de 8 a 18 y los sábados de 9 a 13."""
     sede = Sede(nombre=nombre, direccion=direccion, telefono=telefono, email=email,
                 estado=EstadoSede.ACTIVA)
@@ -36,9 +37,9 @@ def cargar_datos_ejemplo():
             return False
 
         # Sedes
-        central = crear_sede("Biblioteca Central", "Av. Colón 1200", "351 4210000", "central@biblio.org")
-        norte = crear_sede("Sede Norte", "Av. Rafael Núñez 4500", "351 4810000", "norte@biblio.org")
-        sur = crear_sede("Sede Sur", "Av. Vélez Sarsfield 3000", "351 4640000", None)
+        central = crear_sede("Biblioteca Central", "Avenida Colón 1200", "3514210000", "central@biblio.org")
+        norte = crear_sede("Sede Norte", "Avenida Rafael Núñez 4500", "3514810000", "norte@biblio.org")
+        sur = crear_sede("Sede Sur", "Avenida Vélez Sarsfield 3000", "3514640000", None)
 
         # Empleados
         empleados = [
@@ -50,13 +51,13 @@ def cargar_datos_ejemplo():
         # Socios
         socios = [
             Socio(nro_socio=1, dni="30111222", nombre="Ana", apellido="Martínez",
-                  email="ana@example.com", telefono="351 5550001", estado=EstadoSocio.ACTIVO),
+                  email="ana@example.com", telefono="3515550001", estado=EstadoSocio.ACTIVO),
             Socio(nro_socio=2, dni="28333444", nombre="Carlos", apellido="López",
-                  email="carlos@example.com", telefono="351 5550002", estado=EstadoSocio.ACTIVO),
+                  email="carlos@example.com", telefono="3515550002", estado=EstadoSocio.ACTIVO),
             Socio(nro_socio=3, dni="35555666", nombre="Lucía", apellido="Fernández",
-                  email=None, telefono="351 5550003", estado=EstadoSocio.ACTIVO),
+                  email=None, telefono="3515550003", estado=EstadoSocio.ACTIVO),
             Socio(nro_socio=4, dni="4777888", nombre="Jorge", apellido="Ramírez",
-                  email="jorge@example.com", telefono="351 5550004", estado=EstadoSocio.INHABILITADO),
+                  email="jorge@example.com", telefono="3515550004", estado=EstadoSocio.INHABILITADO),
         ]
 
         # Catálogo

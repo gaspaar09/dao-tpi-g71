@@ -5,7 +5,7 @@ from dao.comun import buscar_por_id
 from database import obtener_session
 from excepciones import ReglaNegocioError
 from modelos.catalogo import Categoria
-from validadores import validar_texto
+from validadores import validar_solo_letras
 
 
 class CategoriaDAO:
@@ -17,13 +17,13 @@ class CategoriaDAO:
                 raise ReglaNegocioError(f"La categoría {categoria.nombre} ya existe")
 
     def crear(self, nombre):
-        nombre = validar_texto(nombre, "nombre", LARGO_NOMBRE_PERSONA, minimo=2)
+        nombre = validar_solo_letras(nombre, "nombre", 2, LARGO_NOMBRE_PERSONA)
         with obtener_session() as session:
             self.verificar_nombre_unico(session, nombre)
             session.add(Categoria(nombre=nombre))
 
     def modificar(self, id, nombre):
-        nombre = validar_texto(nombre, "nombre", LARGO_NOMBRE_PERSONA, minimo=2)
+        nombre = validar_solo_letras(nombre, "nombre", 2, LARGO_NOMBRE_PERSONA)
         with obtener_session() as session:
             categoria = buscar_por_id(session, Categoria, id, "la categoría")
             self.verificar_nombre_unico(session, nombre, id_actual=categoria.id)

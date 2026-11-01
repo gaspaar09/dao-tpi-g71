@@ -11,14 +11,14 @@ dao = SocioDAO()
 
 
 def crear_socio(nro="1", dni="30111222"):
-    dao.crear(nro, dni, "Ana", "Martínez", "ana@example.com", "351 5550001")
+    dao.crear(nro, dni, "Ana", "Martínez", "ana@example.com", "54", "3515550001")
     return dao.listar()[-1]['id']
 
 
 class TestAltaSocio:
     def test_alta_normaliza(self):
         preparar_base_en_memoria()
-        dao.crear(" 15 ", "30.111.222", "  Ana  María ", "Martínez", "", "351 5550001")
+        dao.crear(" 15 ", "30.111.222", "  Ana  María ", "Martínez", "", "54", "3515550001")
         socio = dao.listar()[0]
         assert socio['nro_socio'] == 15
         assert socio['dni'] == "30111222"
@@ -31,13 +31,13 @@ class TestAltaSocio:
         dnis_invalidos = ["abc", "-5", "1234567890123", ""]
         for dni in dnis_invalidos:
             with pytest.raises(ValidacionError, match="DNI"):
-                dao.crear("1", dni, "Ana", "Martínez", "", "351 5550001")
+                dao.crear("1", dni, "Ana", "Martínez", "", "54", "3515550001")
         for nombre in ["", "Ana123", "a" * 200]:
             with pytest.raises(ValidacionError, match="nombre"):
-                dao.crear("1", "30111222", nombre, "Martínez", "", "351 5550001")
+                dao.crear("1", "30111222", nombre, "Martínez", "", "54", "3515550001")
         for nro in ["-1", "0", "abc", "1.5"]:
             with pytest.raises(ValidacionError, match="número de socio"):
-                dao.crear(nro, "30111222", "Ana", "Martínez", "", "351 5550001")
+                dao.crear(nro, "30111222", "Ana", "Martínez", "", "54", "3515550001")
         assert dao.listar() == []
 
     def test_duplicados(self):
@@ -91,13 +91,13 @@ class TestModificarSocio:
     def test_modificar(self):
         preparar_base_en_memoria()
         socio_id = crear_socio("1", "30111222")
-        dao.modificar(socio_id, "1", "30111222", "Ana", "Paz", "", "351 5550009")
+        dao.modificar(socio_id, "1", "30111222", "Ana", "Paz", "", "54", "3515550009")
         socio = dao.listar()[0]
-        assert (socio['apellido'], socio['telefono'], socio['email']) == ("Paz", "351 5550009", "")
+        assert (socio['apellido'], socio['telefono'], socio['email']) == ("Paz", "3515550009", "")
 
     def test_modificar_con_dni_de_otro(self):
         preparar_base_en_memoria()
         crear_socio("1", "30111222")
         otro_id = crear_socio("2", "28333444")
         with pytest.raises(ReglaNegocioError, match="DNI"):
-            dao.modificar(otro_id, "2", "30111222", "Ana", "Paz", "", "351 5550009")
+            dao.modificar(otro_id, "2", "30111222", "Ana", "Paz", "", "54", "3515550009")

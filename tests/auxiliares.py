@@ -37,12 +37,13 @@ def preparar_base_en_memoria():
 
 
 def crear_sede(nombre="Central"):
-    return Sede(nombre=nombre, direccion="Av. Siempre Viva 123", telefono="351 4000000",
+    return Sede(nombre=nombre, direccion="Av. Siempre Viva 123", telefono="3514000000",
                 estado=EstadoSede.ACTIVA)
 
 
 def crear_socio(estado="ACTIVO"):
-    return Socio(nro_socio=1, dni="12345678", nombre="Ana", apellido="Martínez", estado=estado)
+    return Socio(nro_socio=1, dni="12345678", nombre="Ana", apellido="Martínez",
+                 telefono="3515550001", estado=estado)
 
 
 def crear_ejemplar(sede, estado=EstadoEjemplar.DISPONIBLE):

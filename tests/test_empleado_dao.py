@@ -14,7 +14,7 @@ dao = EmpleadoDAO()
 
 
 def crear_sede(nombre="Central"):
-    SedeDAO().crear(nombre, "Calle 1", "351 4000000", "", DiaSemana.LUNES, "08:00", "18:00")
+    SedeDAO().crear(nombre, "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00")
     return SedeDAO().opciones(solo_activas=False)[-1][0]
 
 

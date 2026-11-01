@@ -6,10 +6,10 @@ import pytest
 
 from constantes import DiaSemana
 from excepciones import ValidacionError
-from validadores import (normalizar_texto, validar_texto, validar_texto_opcional,
-                         validar_solo_letras, validar_entero, validar_numero_no_negativo,
-                         validar_nro_socio, validar_anio_edicion, validar_dni, validar_email,
-                         validar_telefono, validar_isbn, validar_codigo_inventario,
+from validadores import (normalizar_texto, validar_texto, validar_texto_con_letras, validar_texto_opcional,
+                         validar_solo_letras, validar_direccion, validar_entero, validar_numero_no_negativo,
+                         validar_nro_socio, validar_anio_edicion, validar_dni, formatear_dni, validar_email,
+                         validar_telefono, validar_prefijo_pais, validar_isbn, validar_codigo_inventario,
                          validar_legajo, validar_fecha, validar_fecha_no_futura,
                          validar_hora, validar_rango_horario, validar_opcion)
 
@@ -36,6 +36,12 @@ class TestTexto:
         with pytest.raises(ValidacionError, match="al menos 2"):
             validar_texto("a", "nombre", 80, minimo=2)
 
+    def test_texto_con_letras(self):
+        assert validar_texto_con_letras("Sede 9 de Julio", "nombre", 80) == "Sede 9 de Julio"
+        for valor in ["12345", "9 9", "---", "123.45"]:
+            with pytest.raises(ValidacionError, match="al menos una letra"):
+                validar_texto_con_letras(valor, "nombre", 80)
+
     def test_texto_opcional(self):
         for valor in ["", "   ", None]:
             assert validar_texto_opcional(valor, "observaciones", 300) is None
@@ -58,6 +64,28 @@ class TestSoloLetras:
         for valor in ["A", "a" * 51]:
             with pytest.raises(ValidacionError):
                 validar_solo_letras(valor, "nombre", 2, 50)
+
+    def test_capitaliza(self):
+        casos = [("cArLos", "Carlos"), ("josé maría", "José María"), ("pérez-gómez", "Pérez-Gómez"),
+                 ("ñandú", "Ñandú"), ("CARLOS", "CARLOS"), ("JOSÉ MARÍA", "JOSÉ MARÍA")]
+        for escrito, guardado in casos:
+            assert validar_solo_letras(escrito, "nombre", 2, 50) == guardado
+
+
+class TestDireccion:
+    def test_direcciones_validas(self):
+        for direccion in ["Avenida Colón 1200", "Calle 9 de Julio 50", "Bv San Juan 1-A"]:
+            assert validar_direccion(direccion, "dirección", 120) == direccion
+
+    def test_caracteres_invalidos(self):
+        for valor in ["Av. Colón 1200", "Colón #1200", "<script>", "Colón, 1200"]:
+            with pytest.raises(ValidacionError, match="solo puede tener letras, números"):
+                validar_direccion(valor, "dirección", 120)
+
+    def test_sin_letras(self):
+        for valor in ["1234", "12 34", "--"]:
+            with pytest.raises(ValidacionError, match="al menos una letra"):
+                validar_direccion(valor, "dirección", 120)
 
 
 class TestEntero:
@@ -116,9 +144,29 @@ class TestDni:
             with pytest.raises(ValidacionError, match="solo puede tener números"):
                 validar_dni(valor)
 
-    def test_dni_largo_invalido(self):
-        for valor in ["123456", "1234567890123"]:
-            with pytest.raises(ValidacionError, match="7 u 8 dígitos"):
+    def test_dni_limites(self):
+        assert validar_dni("1.000.000") == "1000000"
+        assert validar_dni("99.999.999") == "99999999"
+
+    def test_dni_fuera_de_rango(self):
+        for valor in ["123456", "999999", "100000000", "1234567890123"]:
+            with pytest.raises(ValidacionError, match="entre 1.000.000 y 99.999.999"):
+                validar_dni(valor)
+
+    def test_puntos_mal_ubicados(self):
+        for valor in ["1.000000", "1000.000", "12.34.5678", "123.45.678", ".1234567", "1234567."]:
+            with pytest.raises(ValidacionError, match="puntos del DNI están mal ubicados"):
+                validar_dni(valor)
+
+    def test_formatear_dni(self):
+        casos = [("1000000", "1.000.000"), ("12345678", "12.345.678"), ("123", "123"),
+                 ("1234", "1.234"), ("1.2.3.4", "1.234"), ("", "")]
+        for escrito, formateado in casos:
+            assert formatear_dni(escrito) == formateado
+
+    def test_dni_con_cero_adelante(self):
+        for valor in ["00000005", "01234567", "0"]:
+            with pytest.raises(ValidacionError, match="no puede empezar con 0"):
                 validar_dni(valor)
 
     def test_dni_vacio(self):
@@ -149,11 +197,12 @@ class TestEmail:
 
 class TestTelefono:
     def test_telefonos_validos(self):
-        for valor in ["351 4000000", "+54 (351) 400-0000", "123456"]:
+        for valor in ["3514000000", "123456", "123456789012345"]:
             assert validar_telefono(valor) == valor
 
-    def test_caracteres_invalidos(self):
-        for valor in ["abc123456", "351.400.0000", "351#4000000"]:
+    def test_numero_plano(self):
+        """Sin espacios, guiones, paréntesis ni "+": el país se elige aparte."""
+        for valor in ["351 4000000", "351-4000000", "+543514000000", "(351)4000000", "abc123456"]:
             with pytest.raises(ValidacionError, match="solo puede tener números"):
                 validar_telefono(valor)
 
@@ -161,6 +210,13 @@ class TestTelefono:
         for valor in ["12345", "1234567890123456"]:
             with pytest.raises(ValidacionError, match="entre 6 y 15 dígitos"):
                 validar_telefono(valor)
+
+    def test_prefijo_pais(self):
+        for codigo in ["54", "598", "55"]:
+            assert validar_prefijo_pais(codigo) == codigo
+        for valor in ["", "+54", "1", "34", None]:  # 34 es España: fuera de Sudamérica
+            with pytest.raises(ValidacionError, match="país del teléfono"):
+                validar_prefijo_pais(valor)
 
 
 class TestIsbn:

@@ -24,7 +24,8 @@ DIAS_RETIRO_RESERVA = 2
 LARGO_NOMBRE_SEDE = 80
 LARGO_DIRECCION = 120
 LARGO_EMAIL = 100
-LARGO_TELEFONO = 20
+LARGO_TELEFONO = 15  # solo dígitos, sin el código de país
+LARGO_PREFIJO = 3     # código de país, por ejemplo "54" o "598"
 LARGO_LEGAJO = 20
 LARGO_NOMBRE_EMPLEADO = 80
 LARGO_NOMBRE_PERSONA = 50
@@ -41,3 +42,5 @@ LARGO_ESTADO = 20
 # Límites numéricos de los validadores
 MAXIMO_ENTERO = 999999999  # evita que un número enorme desborde el entero de SQLite
 ANIO_MINIMO_EDICION = 1450  # imprenta de Gutenberg
+DNI_MINIMO = 1000000
+DNI_MAXIMO = 99999999

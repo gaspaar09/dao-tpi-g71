@@ -59,7 +59,7 @@ class TestCategorias:
         categoria_dao.crear("Novela")
         categoria_id = categoria_dao.opciones()[0][0]
         categoria_dao.modificar(categoria_id, "Novela histórica")
-        assert categoria_dao.listar()[0]['nombre'] == "Novela histórica"
+        assert categoria_dao.listar()[0]['nombre'] == "Novela Histórica"  # se capitaliza
         categoria_dao.eliminar(categoria_id)
         assert categoria_dao.listar() == []
 
@@ -97,6 +97,19 @@ class TestLibros:
         with pytest.raises(ReglaNegocioError, match="Ya existe un título"):
             crear_libro(categoria_id, autor_id, "9789500700011")
 
+    def test_textos_solo_numericos(self):
+        categoria_id, autor_id = preparar_catalogo()
+        casos = [("123", "Sudamericana", "Español", "título"),
+                 ("Rayuela", "999", "Español", "editorial"),
+                 ("Rayuela", "Sudamericana", "123", "idioma"),
+                 ("Rayuela", "Sudamericana", "Esp4ñol", "idioma")]
+        for titulo, editorial, idioma, campo in casos:
+            with pytest.raises(ValidacionError, match=campo):
+                libro_dao.crear("9789500700011", titulo, editorial, "1963", idioma,
+                                TipoMaterial.LIBRO, categoria_id, [autor_id])
+        with pytest.raises(ValidacionError, match="solo puede tener letras"):
+            categoria_dao.crear("12345")
+
     def test_requiere_autor_categoria_y_tipo(self):
         categoria_id, autor_id = preparar_catalogo()
         with pytest.raises(ValidacionError, match="al menos un autor"):
@@ -126,7 +139,7 @@ class TestLibros:
     def test_no_se_elimina_con_ejemplares(self):
         categoria_id, autor_id = preparar_catalogo()
         libro_id = crear_libro(categoria_id, autor_id)
-        SedeDAO().crear("Central", "Calle 1", "351 4000000", "", DiaSemana.LUNES, "08:00", "18:00")
+        SedeDAO().crear("Central", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00")
         EjemplarDAO().crear("EJ-001", libro_id, SedeDAO().opciones()[0][0], EstadoFisico.NUEVO)
         with pytest.raises(ReglaNegocioError, match="tiene ejemplares"):
             libro_dao.eliminar(libro_id)

@@ -5,8 +5,8 @@ from datetime import date
 from sqlalchemy import Column, Integer, String, Date
 from sqlalchemy.orm import relationship
 
-from config import LARGO_NOMBRE_PERSONA, LARGO_EMAIL, LARGO_TELEFONO, LARGO_ESTADO
-from constantes import EstadoSocio
+from config import LARGO_NOMBRE_PERSONA, LARGO_EMAIL, LARGO_TELEFONO, LARGO_PREFIJO, LARGO_ESTADO
+from constantes import EstadoSocio, PaisTelefono
 from database import Base
 from excepciones import ReglaNegocioError
 
@@ -21,7 +21,8 @@ class Socio(Base):
     nombre = Column(String(LARGO_NOMBRE_PERSONA), nullable=False)
     apellido = Column(String(LARGO_NOMBRE_PERSONA), nullable=False)
     email = Column(String(LARGO_EMAIL))
-    telefono = Column(String(LARGO_TELEFONO))
+    prefijo_pais = Column(String(LARGO_PREFIJO), nullable=False, default=PaisTelefono.ARGENTINA)
+    telefono = Column(String(LARGO_TELEFONO), nullable=False)
     fecha_alta = Column(Date, default=date.today, nullable=False)
     estado = Column(String(LARGO_ESTADO), nullable=False, default=EstadoSocio.ACTIVO)
 

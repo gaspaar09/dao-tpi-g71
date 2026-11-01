@@ -32,7 +32,7 @@ class EstadoEjemplar:
     RESERVADO = "RESERVADO"
     PRESTADO = "PRESTADO"
     EN_TRANSITO = "EN_TRANSITO"
-    DANADO = "DANADO"
+    DANADO = "DAÑADO"
     EXTRAVIADO = "EXTRAVIADO"
     BAJA = "BAJA"
     TODOS = [DISPONIBLE, RESERVADO, PRESTADO, EN_TRANSITO, DANADO, EXTRAVIADO, BAJA]
@@ -42,7 +42,7 @@ class EstadoFisico:
     NUEVO = "NUEVO"
     BUENO = "BUENO"
     REGULAR = "REGULAR"
-    DANADO = "DANADO"
+    DANADO = "DAÑADO"
     DESTRUIDO = "DESTRUIDO"
     TODOS = [NUEVO, BUENO, REGULAR, DANADO, DESTRUIDO]
 
@@ -99,13 +99,23 @@ class EstadoRemito:
 
 class TipoIncidencia:
     EXTRAVIO = "EXTRAVIO"
-    DANIO = "DANIO"
+    DANIO = "DAÑO"
     DEMORA = "DEMORA"
     TODOS = [EXTRAVIO, DANIO, DEMORA]
 
 
+class PaisTelefono:
+    # Países de Sudamérica y su código telefónico internacional (sin "+").
+    # El usuario elige el país y el código sale de acá: no se escribe a mano.
+    ARGENTINA = "54"
+    PAISES = [("Argentina", "54"), ("Bolivia", "591"), ("Brasil", "55"), ("Chile", "56"),
+              ("Colombia", "57"), ("Ecuador", "593"), ("Guyana", "592"), ("Paraguay", "595"),
+              ("Perú", "51"), ("Surinam", "597"), ("Uruguay", "598"), ("Venezuela", "58")]
+    TODOS = [codigo for pais, codigo in PAISES]
+
+
 class DiaSemana:
-    # Días de HorarioSede. Sin tildes, como el resto de las constantes
+    # Días de HorarioSede, sin tildes
     LUNES = "LUNES"
     MARTES = "MARTES"
     MIERCOLES = "MIERCOLES"

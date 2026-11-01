@@ -9,7 +9,7 @@ from modelos.sede import Sede, HorarioSede
 from modelos.prestamo import Prestamo
 from modelos.remito import Remito
 from modelos.reserva import Reserva
-from validadores import (validar_texto, validar_telefono, validar_email, validar_opcion,
+from validadores import (validar_solo_letras, validar_direccion, validar_telefono, validar_prefijo_pais, validar_email, validar_opcion,
                          validar_hora, validar_rango_horario)
 
 # Estados que impiden dar de baja una sede porque la operación sigue abierta
@@ -19,13 +19,14 @@ REMITOS_EN_CURSO = [EstadoRemito.EMPAQUETADO, EstadoRemito.DESPACHADO, EstadoRem
 RESERVAS_EN_CURSO = [EstadoReserva.PENDIENTE, EstadoReserva.DISPONIBLE]
 
 
-def validar_datos_sede(nombre, direccion, telefono, email):
+def validar_datos_sede(nombre, direccion, prefijo, telefono, email):
     """Valida el formato de los datos de la sede y los devuelve normalizados."""
-    nombre = validar_texto(nombre, "nombre", LARGO_NOMBRE_SEDE, minimo=2)
-    direccion = validar_texto(direccion, "dirección", LARGO_DIRECCION)
+    nombre = validar_solo_letras(nombre, "nombre", 2, LARGO_NOMBRE_SEDE)
+    direccion = validar_direccion(direccion, "dirección", LARGO_DIRECCION)
+    prefijo = validar_prefijo_pais(prefijo)
     telefono = validar_telefono(telefono)
     email = validar_email(email, obligatorio=False)
-    return nombre, direccion, telefono, email
+    return nombre, direccion, prefijo, telefono, email
 
 
 def validar_datos_horario(dia, apertura, cierre):
@@ -45,24 +46,27 @@ class SedeDAO:
             if sede.nombre.lower() == nombre.lower() and sede.id != id_actual:
                 raise ReglaNegocioError(f"Ya existe una sede llamada {sede.nombre}")
 
-    def crear(self, nombre, direccion, telefono, email, dia, apertura, cierre):
+    def crear(self, nombre, direccion, prefijo, telefono, email, dia, apertura, cierre):
         """Da de alta una sede junto con su primer horario (mínimo uno)."""
-        nombre, direccion, telefono, email = validar_datos_sede(nombre, direccion, telefono, email)
+        datos = validar_datos_sede(nombre, direccion, prefijo, telefono, email)
+        nombre, direccion, prefijo, telefono, email = datos
         dia, apertura, cierre = validar_datos_horario(dia, apertura, cierre)
         with obtener_session() as session:
             self.verificar_nombre_unico(session, nombre)
-            sede = Sede(nombre=nombre, direccion=direccion, telefono=telefono, email=email,
+            sede = Sede(nombre=nombre, direccion=direccion, prefijo_pais=prefijo, telefono=telefono, email=email,
                         estado=EstadoSede.ACTIVA)
             sede.horarios.append(HorarioSede(dia_semana=dia, hora_apertura=apertura, hora_cierre=cierre))
             session.add(sede)
 
-    def modificar(self, id, nombre, direccion, telefono, email):
-        nombre, direccion, telefono, email = validar_datos_sede(nombre, direccion, telefono, email)
+    def modificar(self, id, nombre, direccion, prefijo, telefono, email):
+        datos = validar_datos_sede(nombre, direccion, prefijo, telefono, email)
+        nombre, direccion, prefijo, telefono, email = datos
         with obtener_session() as session:
             sede = buscar_por_id(session, Sede, id, "la sede")
             self.verificar_nombre_unico(session, nombre, id_actual=sede.id)
             sede.nombre = nombre
             sede.direccion = direccion
+            sede.prefijo_pais = prefijo
             sede.telefono = telefono
             sede.email = email
 
@@ -110,7 +114,9 @@ class SedeDAO:
                     'id': sede.id,
                     'nombre': sede.nombre,
                     'direccion': sede.direccion,
+                    'prefijo': sede.prefijo_pais,
                     'telefono': sede.telefono,
+                    'telefono_completo': f"+{sede.prefijo_pais} {sede.telefono}",
                     'email': sede.email or "",
                     'estado': sede.estado,
                 }

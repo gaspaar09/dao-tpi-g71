@@ -6,21 +6,22 @@ from dao.comun import buscar_por_id
 from database import obtener_session
 from excepciones import ReglaNegocioError
 from modelos.socio import Socio
-from validadores import (validar_nro_socio, validar_dni, validar_solo_letras,
-                         validar_email, validar_telefono)
+from validadores import (validar_nro_socio, validar_dni, formatear_dni, validar_solo_letras,
+                         validar_email, validar_prefijo_pais, validar_telefono)
 
 PRESTAMOS_EN_CURSO = [EstadoPrestamo.SOLICITADO, EstadoPrestamo.APROBADO,
                       EstadoPrestamo.EN_ENVIO, EstadoPrestamo.ACTIVO]
 
 
-def validar_datos_socio(nro_socio, dni, nombre, apellido, email, telefono):
+def validar_datos_socio(nro_socio, dni, nombre, apellido, email, prefijo, telefono):
     nro_socio = validar_nro_socio(nro_socio)
     dni = validar_dni(dni)
     nombre = validar_solo_letras(nombre, "nombre", 2, LARGO_NOMBRE_PERSONA)
     apellido = validar_solo_letras(apellido, "apellido", 2, LARGO_NOMBRE_PERSONA)
     email = validar_email(email, obligatorio=False)
+    prefijo = validar_prefijo_pais(prefijo)
     telefono = validar_telefono(telefono)
-    return nro_socio, dni, nombre, apellido, email, telefono
+    return nro_socio, dni, nombre, apellido, email, prefijo, telefono
 
 
 class SocioDAO:
@@ -34,17 +35,18 @@ class SocioDAO:
         if socio is not None and socio.id != id_actual:
             raise ReglaNegocioError(f"Ya existe un socio con el DNI {dni}")
 
-    def crear(self, nro_socio, dni, nombre, apellido, email, telefono):
-        datos = validar_datos_socio(nro_socio, dni, nombre, apellido, email, telefono)
-        nro_socio, dni, nombre, apellido, email, telefono = datos
+    def crear(self, nro_socio, dni, nombre, apellido, email, prefijo, telefono):
+        datos = validar_datos_socio(nro_socio, dni, nombre, apellido, email, prefijo, telefono)
+        nro_socio, dni, nombre, apellido, email, prefijo, telefono = datos
         with obtener_session() as session:
             self.verificar_duplicados(session, nro_socio, dni)
             session.add(Socio(nro_socio=nro_socio, dni=dni, nombre=nombre, apellido=apellido,
-                              email=email, telefono=telefono, estado=EstadoSocio.ACTIVO))
+                              email=email, prefijo_pais=prefijo, telefono=telefono,
+                              estado=EstadoSocio.ACTIVO))
 
-    def modificar(self, id, nro_socio, dni, nombre, apellido, email, telefono):
-        datos = validar_datos_socio(nro_socio, dni, nombre, apellido, email, telefono)
-        nro_socio, dni, nombre, apellido, email, telefono = datos
+    def modificar(self, id, nro_socio, dni, nombre, apellido, email, prefijo, telefono):
+        datos = validar_datos_socio(nro_socio, dni, nombre, apellido, email, prefijo, telefono)
+        nro_socio, dni, nombre, apellido, email, prefijo, telefono = datos
         with obtener_session() as session:
             socio = buscar_por_id(session, Socio, id, "el socio")
             self.verificar_duplicados(session, nro_socio, dni, id_actual=socio.id)
@@ -53,6 +55,7 @@ class SocioDAO:
             socio.nombre = nombre
             socio.apellido = apellido
             socio.email = email
+            socio.prefijo_pais = prefijo
             socio.telefono = telefono
 
     def inhabilitar(self, id):
@@ -86,10 +89,13 @@ class SocioDAO:
                     'id': socio.id,
                     'nro_socio': socio.nro_socio,
                     'dni': socio.dni,
+                    'dni_formateado': formatear_dni(socio.dni),
                     'nombre': socio.nombre,
                     'apellido': socio.apellido,
                     'email': socio.email or "",
-                    'telefono': socio.telefono or "",
+                    'prefijo': socio.prefijo_pais,
+                    'telefono': socio.telefono,
+                    'telefono_completo': f"+{socio.prefijo_pais} {socio.telefono}",
                     'fecha_alta': socio.fecha_alta.strftime("%d/%m/%Y"),
                     'estado': socio.estado,
                 }
