@@ -98,13 +98,14 @@ class RemitoDAO:
     def crear_ida(self, sede_origen_id, sede_destino_id, prestamos_ids, empleado_id):
         """Arma un remito EMPAQUETADO con préstamos interbibliotecarios
         aprobados entre el mismo par de sedes. Los préstamos pasan a EN_ENVIO."""
-        if not prestamos_ids:
-            raise ValidacionError("Seleccione al menos un préstamo para enviar")
         with obtener_session() as session:
             empleado = buscar_por_id(session, Empleado, empleado_id, "el empleado actual")
             origen = buscar_por_id(session, Sede, sede_origen_id, "la sede de origen")
             destino = buscar_por_id(session, Sede, sede_destino_id, "la sede de destino")
+            # Primero las sedes: si son iguales, ese es el error a mostrar, no la lista vacía
             validar_sedes_remito(origen, destino)
+            if not prestamos_ids:
+                raise ValidacionError("Seleccione al menos un préstamo para enviar")
             prestamos = []
             for prestamo_id in prestamos_ids:
                 prestamo = buscar_por_id(session, Prestamo, prestamo_id, "el préstamo")

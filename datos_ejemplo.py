@@ -182,6 +182,8 @@ def cargar_prestamos_y_remitos():
         for prestamo_id, dias in [(vencido_3_dias, 34), (vencido_9_dias, 40)]:
             prestamo = session.query(Prestamo).filter_by(id=prestamo_id).first()
             prestamo.fecha_prestamo = date.today() - timedelta(days=dias)
+            # La solicitud también se corre, para que no quede posterior al préstamo
+            prestamo.fecha_solicitud = prestamo.fecha_prestamo
             prestamo.fecha_vencimiento = ESTRATEGIAS[prestamo.tipo].calcular_vencimiento(prestamo.fecha_prestamo)
 
     # Interbibliotecarios aprobados que esperan remito (se pueden agrupar en uno)

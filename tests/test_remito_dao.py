@@ -83,6 +83,9 @@ class TestCrearIda:
         aprobado = aprobar_inter(ids, ids['ejemplares'][0])
         with pytest.raises(ValidacionError, match="al menos un préstamo"):
             dao.crear_ida(ids['central'], ids['norte'], [], ids['empleado'])
+        # Con sedes iguales y sin préstamos, el error que se informa es el de las sedes
+        with pytest.raises(ReglaNegocioError, match="deben ser distintas"):
+            dao.crear_ida(ids['central'], ids['central'], [], ids['empleado'])
         with pytest.raises(ValidacionError, match="empleado actual"):
             dao.crear_ida(ids['central'], ids['norte'], [aprobado], None)
         with pytest.raises(ReglaNegocioError, match="deben ser distintas"):

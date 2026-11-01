@@ -35,7 +35,11 @@ def main():
 
     ventana = tk.Tk()
     ventana.title("Biblioteca - Préstamos interbibliotecarios")
-    ventana.geometry("1150x750")
+    # El contenido de las pestañas pide unos 1370x960: se abre con ese tamaño,
+    # sin pasarse de la pantalla (en pantallas chicas conviene maximizar)
+    ancho = min(1380, ventana.winfo_screenwidth())
+    alto = min(960, ventana.winfo_screenheight() - 80)
+    ventana.geometry(f"{ancho}x{alto}+0+0")
     ttk.Style().theme_use("clam")
 
     # Empleado actual: no hay login, así que se elige acá quién opera.
