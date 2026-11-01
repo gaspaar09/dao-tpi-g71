@@ -116,13 +116,27 @@ class TestAprobacion:
         assert estado_ejemplar() == EstadoEjemplar.RESERVADO
 
     def test_dos_solicitudes_del_mismo_ejemplar(self):
-        """Ambas se registran, pero solo la primera que se aprueba se lleva el ejemplar."""
+        """Dos socios pueden pedir el mismo ejemplar: se lo lleva la primera que se aprueba."""
         ids = preparar()
         primero = solicitar(ids)
-        segundo = solicitar(ids)
+        SocioDAO().crear("2", "30111333", "Bruno", "Paz", "", "54", "3515550002")
+        otro_socio = [id for id, texto in SocioDAO().opciones() if id != ids['socio']][0]
+        dao.solicitar(LOCAL, otro_socio, ids['ejemplar'], ids['central'], None)
+        segundo = dao.listar()[0]['id']
         dao.aprobar(primero)
         with pytest.raises(ReglaNegocioError, match="no está disponible"):
             dao.aprobar(segundo)
+
+    def test_el_mismo_socio_no_repite_la_solicitud(self):
+        """Por ejemplo, un doble clic en Registrar solicitud."""
+        ids = preparar()
+        primero = solicitar(ids)
+        with pytest.raises(ReglaNegocioError, match="ya tiene una solicitud SOLICITADO"):
+            solicitar(ids)
+        # Cancelada la primera, puede volver a pedirlo
+        dao.cancelar(primero)
+        solicitar(ids)
+        assert len(dao.listar()) == 2
 
     def test_no_se_aprueba_dos_veces(self):
         ids = preparar()

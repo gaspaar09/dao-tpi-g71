@@ -94,6 +94,7 @@ class TestCrearIda:
         solicitado = prestamos.listar()[0]['id']
         with pytest.raises(ReglaNegocioError, match="SOLICITADO no puede pasar a EN_ENVIO"):
             dao.crear_ida(ids['central'], ids['norte'], [aprobado, solicitado], ids['empleado'])
+        prestamos.cancelar(solicitado)  # el mismo socio no puede repetir la solicitud
         prestamos.solicitar(TipoPrestamo.LOCAL, ids['socio'], ids['ejemplares'][1], ids['central'], None)
         local = prestamos.listar()[0]['id']
         with pytest.raises(ReglaNegocioError, match="es local"):

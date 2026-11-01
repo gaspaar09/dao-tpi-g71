@@ -103,6 +103,7 @@ docs/            enunciado, propuesta, diagrama, validaciones y apuntes
 - `docs/PROPUESTA.md`: propuesta del grupo.
 - `docs/diagrama-clases.mmd`: diagrama de clases vigente.
 - `docs/VALIDACIONES.md`: checklist de validaciones y guion de pruebas para la defensa.
+- `docs/DEFENSA.md`: guion de la defensa (demo, casos inválidos, patrones, capítulos de los apuntes y preguntas probables).
 
 ## Estado
-Fases 0 a 7 terminadas: todos los procesos obligatorios, los dos patrones (State y Strategy) y los 6 reportes. Falta la fase 8 (pasada completa por el checklist de validaciones y ensayo de la defensa), ver `CLAUDE.md`, sección "Plan de trabajo".
+Fases 0 a 8 terminadas: todos los procesos obligatorios, los dos patrones (State y Strategy), los 6 reportes y la pasada por el checklist de validaciones. Para preparar la defensa, ver `docs/DEFENSA.md`.

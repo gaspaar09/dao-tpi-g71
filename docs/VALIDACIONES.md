@@ -22,7 +22,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 - **Entero positivo:** `try: n = int(texto)` / `except ValueError` y luego `n > 0`. Cubre letras, decimales, `1e5` y vacío.
 - **Solo letras:** `texto.replace(" ", "").replace("-", "").replace("'", "").isalpha()`, más largo mínimo y máximo.
 - **Email:** una sola `@`, texto antes de la `@`, y un `.` después de la `@` que no sea el último carácter; sin espacios.
-- **Teléfono:** recorrer los caracteres y aceptar dígitos, espacios, `+`, `-` y paréntesis; contar entre 6 y 15 dígitos.
+- **Teléfono:** número plano, solo dígitos (`isdigit` sobre cada carácter), entre 6 y 15; el código de país se elige aparte en un desplegable (Sudamérica, sin "+").
 - **Fecha dd/mm/aaaa:** `partes = texto.split("/")`, tres partes numéricas, `date(anio, mes, dia)` (lanza `ValueError` ante 30/02).
 - **Código de inventario:** recorrer los caracteres y aceptar letras mayúsculas, dígitos y guiones.
 
@@ -39,9 +39,10 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 | Campo | Regla |
 |---|---|
 | nombre | Obligatorio, 2–80 caracteres, letras y números (al menos una letra, por ejemplo "7 Soles"), espacios, apóstrofo y guion; se guarda capitalizado; único sin distinguir mayúsculas *(supuesto)* |
-| direccion | Obligatoria, hasta 120 |
-| telefono | Obligatorio; solo dígitos, espacios, `+`, `-`, `()`; entre 6 y 15 dígitos |
-| email | Formato válido, hasta 100 |
+| direccion | Obligatoria, hasta 120; letras, números, espacios, apóstrofo y guion, con al menos una letra (sin puntos ni comas) |
+| prefijo (país) | Obligatorio, ∈ `PaisTelefono.TODOS` (desplegable de países de Sudamérica; por defecto Argentina, 54) |
+| telefono | Obligatorio; número plano, solo dígitos, entre 6 y 15 (sin espacios, guiones ni "+") |
+| email | Opcional; si se carga, formato `usuario@dominio.com`, hasta 100, se guarda en minúsculas |
 | estado | Constante de `EstadoSede`; solo cambia con `dar_de_baja()` |
 | baja | No permitir con préstamos activos, remitos en curso o reservas pendientes *(supuesto)* |
 | volver a dar de alta | Solo una sede dada de baja; vuelve a ACTIVA con sus horarios, empleados y ejemplares |
@@ -55,10 +56,10 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 | Campo | Regla |
 |---|---|
 | nro_socio | Entero > 0, único |
-| dni | Solo dígitos (se admiten puntos y se quitan), 7 u 8 dígitos, único |
+| dni | Entre 1.000.000 y 99.999.999, sin 0 adelante; se admiten puntos solo bien ubicados (la UI los pone sola al tipear); se guardan solo los dígitos; único |
 | nombre, apellido | Solo letras, espacios, tildes, apóstrofo y guion; 2–50 |
-| email | Formato válido, hasta 100 |
-| telefono | Igual que Sede |
+| email | Opcional; si se carga, formato válido, hasta 100 |
+| prefijo, telefono | Igual que Sede (teléfono obligatorio) |
 | fecha_alta | La pone el sistema (hoy); si fuera editable, no puede ser futura |
 | baja / inhabilitar | Baja solo sin préstamos activos *(supuesto)* |
 
@@ -66,14 +67,15 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 | Campo | Regla |
 |---|---|
 | isbn (ISBN o ISSN) | Tras quitar guiones y espacios debe tener 8 (ISSN), 10 o 13 caracteres; todos dígitos salvo que ISSN e ISBN-10 pueden terminar en `X`; único. Validar el dígito verificador es un plus |
-| titulo | Obligatorio, hasta 150 |
-| editorial, idioma | Obligatorios, hasta 80 y 30 |
+| titulo | Obligatorio, hasta 150, con al menos una letra (texto libre: admite signos) |
+| editorial | Obligatoria, hasta 80, con al menos una letra |
+| idioma | Obligatorio, solo letras, 2–30 |
 | anio_edicion | Entero entre 1450 y el año actual |
 | tipo_material | ∈ `TipoMaterial` |
 | autores | Al menos uno, todos existentes |
 | categoria | Existente |
 | Autor | nombre y apellido solo letras; duplicado = mismo nombre y apellido normalizados |
-| Categoría | nombre obligatorio, único |
+| Categoría | nombre solo letras, 2–50, único sin distinguir mayúsculas |
 
 *Decidido:* el campo `isbn` acepta ISBN (10 o 13) e ISSN (8), porque el catálogo incluye revistas y otros materiales de consulta.
 
@@ -82,6 +84,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 
 ### Préstamo
 - Socio existente y ACTIVO. Ejemplar existente y DISPONIBLE.
+- El mismo socio no puede tener dos solicitudes SOLICITADO o APROBADO del mismo ejemplar (evita el doble clic). Socios distintos sí pueden pedir el mismo ejemplar: se lo lleva el primero que se aprueba.
 - `ejemplar.sede == sede_origen`. Ambas sedes existentes y ACTIVAS.
 - LOCAL → `origen == destino`. INTERBIBLIOTECARIO → `origen != destino`.
 - `fecha_solicitud` = hoy (sistema). `fecha_prestamo` y `fecha_vencimiento` las fija el sistema cuando el préstamo pasa a ACTIVO; el vencimiento lo calcula la estrategia (31 días local, 38 interbibliotecario) y es siempre posterior a `fecha_prestamo`. El usuario no las ingresa.
@@ -105,6 +108,10 @@ Socio ACTIVO. Libro existente. `sede_retiro` ACTIVA. `fecha_reserva` = hoy. `fec
 - Transición inválida (p. ej. cancelar un remito DESPACHADO) → `TransicionInvalidaError`.
 - Movimiento: empleado obligatorio y existente; observación hasta 200, obligatoria al cancelar o dar por extraviado.
 - Incidencia: `tipo` ∈ `TipoIncidencia`; `fecha` no futura y ≥ `fecha_creacion` del remito; descripción 5–300.
+
+**Textos libres** (título, editorial, observaciones, descripciones): aceptan signos como `<`, `'` o `--` a propósito. No hay riesgo de inyección SQL porque el ORM pasa los valores como parámetros (nunca se arma SQL con texto), y Tkinter muestra el texto tal cual, sin interpretarlo.
+
+**Cobertura automática:** `tests/test_entradas_invalidas.py` recorre los "casos a probar en todos los campos" contra cada alta y operación de los DAO, y comprueba que siempre terminen en `ValidacionError` o `ReglaNegocioError` (nunca en un error de la base).
 
 ## Guion de pruebas manuales (ensayo de defensa)
 1. Alta de socio con DNI `abc`, `-5`, `1234567890123`, repetido y con espacios.

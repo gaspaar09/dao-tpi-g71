@@ -58,6 +58,12 @@ class PrestamoDAO:
             else:
                 destino = buscar_por_id(session, Sede, sede_destino_id, "la sede de destino")
             ejemplar = buscar_por_id(session, Ejemplar, ejemplar_id, "el ejemplar")
+            # Evita el duplicado (por ejemplo, un doble clic en Registrar): el
+            # mismo socio no pide dos veces el mismo ejemplar. Socios distintos sí.
+            for anterior in session.query(Prestamo).filter_by(socio_id=socio.id, ejemplar_id=ejemplar.id).all():
+                if anterior.estado in [EstadoPrestamo.SOLICITADO, EstadoPrestamo.APROBADO]:
+                    raise ReglaNegocioError(f"El socio ya tiene una solicitud {anterior.estado} de ese ejemplar "
+                                            f"(préstamo #{anterior.id})")
             prestamo = Prestamo(tipo=tipo, estado=EstadoPrestamo.SOLICITADO, socio=socio, ejemplar=ejemplar,
                                 sede_origen=origen, sede_destino=destino)
             # Reglas del diagrama: socio habilitado, ejemplar disponible y de la
