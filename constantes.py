@@ -104,6 +104,18 @@ class TipoIncidencia:
     TODOS = [EXTRAVIO, DANIO, DEMORA]
 
 
+class DiaSemana:
+    # Días de HorarioSede. Sin tildes, como el resto de las constantes
+    LUNES = "LUNES"
+    MARTES = "MARTES"
+    MIERCOLES = "MIERCOLES"
+    JUEVES = "JUEVES"
+    VIERNES = "VIERNES"
+    SABADO = "SABADO"
+    DOMINGO = "DOMINGO"
+    TODOS = [LUNES, MARTES, MIERCOLES, JUEVES, VIERNES, SABADO, DOMINGO]
+
+
 class RolEmpleado:
     BIBLIOTECARIO = "BIBLIOTECARIO"
     ADMINISTRADOR = "ADMINISTRADOR"

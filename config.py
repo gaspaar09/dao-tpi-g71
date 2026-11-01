@@ -37,3 +37,7 @@ LARGO_OBSERVACIONES = 300
 LARGO_OBSERVACION_MOVIMIENTO = 200
 LARGO_DESCRIPCION_INCIDENCIA = 300
 LARGO_ESTADO = 20
+
+# Límites numéricos de los validadores
+MAXIMO_ENTERO = 999999999  # evita que un número enorme desborde el entero de SQLite
+ANIO_MINIMO_EDICION = 1450  # imprenta de Gutenberg
