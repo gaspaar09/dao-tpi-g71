@@ -43,7 +43,7 @@ Cuando está activo, la consola muestra `(.venv)` al principio de la línea. Hay
 ```
 pip install -r requirements.txt
 ```
-Instala `sqlalchemy` y `pytest`.
+Instala `sqlalchemy`, `pytest` y `ttkbootstrap` (los temas de la interfaz). Si ya tenías el entorno armado, volvé a correr este comando.
 
 ### 5. Ejecutar el sistema
 ```
@@ -60,7 +60,7 @@ Hay que ejecutarlo desde la raíz del proyecto, así pytest encuentra los módul
 ## Primer recorrido
 1. Arriba de la ventana, tocá **Cargar datos de ejemplo** (solo carga si la base está vacía). Trae sedes, socios, catálogo y ejemplares, y además préstamos, remitos y reservas en cada uno de sus estados.
 2. Elegí el **Empleado actual**: sin él no se pueden registrar préstamos, reservas, devoluciones ni remitos.
-3. Pestañas:
+3. Todas las pestañas se usan igual: a la izquierda de la barra de botones está la acción principal (**Nuevo socio**, **Nueva solicitud**...), que abre un formulario en una ventana aparte; para operar sobre un registro, elegilo en la tabla y usá los botones que siguen en esa barra (doble clic en una fila también la edita). En Sedes, Empleados, Socios, Catálogo y Ejemplares, cada fila tiene al final los íconos ✏ (editar) y 🗑 (dar de baja o eliminar). En Préstamos, Reservas y Remitos, **Cancelar** es el botón rojo a la derecha de todo de la barra. Lo que borra o bloquea está a la derecha, en rojo.
    - **Sedes, Empleados, Socios, Catálogo, Ejemplares:** altas, modificaciones y bajas.
    - **Préstamos:** solicitar, aprobar, cancelar, registrar la devolución y marcar multas pagadas.
    - **Reservas:** reservar un título en una sede, retirar (crea el préstamo) y cancelar.

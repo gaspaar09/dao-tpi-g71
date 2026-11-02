@@ -1,7 +1,7 @@
 """Pestaña de Préstamos: solicitud, aprobación, cancelación, devolución y multas."""
 
-from datetime import date
-from tkinter import ttk
+# Los widgets ttk se toman de ttkbootstrap: son los mismos, con los temas modernos
+import ttkbootstrap as ttk
 
 from config import LARGO_OBSERVACIONES
 from constantes import EstadoFisico, TipoPrestamo
@@ -13,6 +13,8 @@ from dao.socio_dao import SocioDAO
 from ui.base import PestaniaBase
 from validadores import validar_fecha, validar_fecha_no_futura, validar_texto_opcional
 
+# Estados en los que se ofrece Cancelar en la fila (un préstamo en envío solo
+# se cancela si su remito sigue empaquetado: eso lo controla el DAO)
 CAMPOS = ['tipo', 'socio', 'sede_origen', 'sede_destino', 'ejemplar']
 CAMPOS_DEVOLUCION = ['fecha_devolucion', 'estado_fisico', 'observaciones']
 
@@ -24,59 +26,42 @@ class PestaniaPrestamos(PestaniaBase):
         self.dao = PrestamoDAO()
         self.devolucion_dao = DevolucionDAO()
 
-        formulario = ttk.Frame(self)
-        formulario.pack(fill="x")
-        self.crear_combo(formulario, 'tipo', "Tipo de préstamo:", 0,
-                         lambda: [(tipo, tipo) for tipo in TipoPrestamo.TODOS])
-        self.crear_combo(formulario, 'socio', "Socio (solo habilitados):", 1, SocioDAO().opciones, ancho=45)
-        self.crear_combo(formulario, 'sede_origen', "Sede de origen (del ejemplar):", 2, SedeDAO().opciones)
-        self.crear_combo(formulario, 'sede_destino', "Sede de destino (retiro):", 3, SedeDAO().opciones)
-        # Solo los ejemplares disponibles de la sede de origen elegida
-        self.crear_combo(formulario, 'ejemplar', "Ejemplar:", 4,
-                         lambda: EjemplarDAO().opciones_disponibles(self.valor('sede_origen')), ancho=45)
-        ttk.Label(formulario, text="En un préstamo local la sede de destino es la misma que la de origen.",
-                  foreground="gray").grid(row=10, column=1, sticky="w", padx=5)
+        self.crear_encabezado("Préstamos", "Solicitudes, aprobación, devoluciones y multas",
+                              [("Nueva solicitud", self.nueva_solicitud, True)])
+        self.crear_barra_seleccion("Con el préstamo elegido:",
+                                   [("Aprobar", self.aprobar), ("Registrar devolución", self.abrir_devolucion),
+                                    ("Marcar multa pagada", self.pagar_multa)],
+                                   [("Cancelar", self.cancelar, True)])
+        self.crear_tabla_principal(self, [
+            ('id', "N°", 50), ('socio_nombre', "Socio", 180), ('libro', "Libro", 230), ('ejemplar', "Ejemplar", 90),
+            ('tipo', "Tipo", 150), ('ruta', "Origen → destino", 260), ('estado', "Estado", 110),
+            ('fecha_prestamo', "Préstamo", 100), ('fecha_vencimiento', "Vence", 100),
+            ('multa_corta', "Multa", 200)]).pack(fill="both", expand=True)
+        self.refrescar()
 
+    # -------------------------------------------------------- solicitud
+
+    def nueva_solicitud(self):
+        if self.hay_empleado():
+            self.abrir_modal("Nueva solicitud de préstamo", self.armar_solicitud, self.registrar,
+                             "Registrar solicitud")
+
+    def armar_solicitud(self, contenedor):
+        self.crear_combo(contenedor, 'tipo', "Tipo de préstamo:", 0,
+                         lambda: [(tipo, tipo) for tipo in TipoPrestamo.TODOS])
+        self.crear_combo(contenedor, 'socio', "Socio (solo habilitados):", 1, SocioDAO().opciones, ancho=45)
+        self.crear_combo(contenedor, 'sede_origen', "Sede de origen (del ejemplar):", 2, SedeDAO().opciones)
+        self.crear_combo(contenedor, 'sede_destino', "Sede de destino (retiro):", 3, SedeDAO().opciones)
+        # Solo los ejemplares disponibles de la sede de origen elegida
+        self.crear_combo(contenedor, 'ejemplar', "Ejemplar:", 4,
+                         lambda: EjemplarDAO().opciones_disponibles(self.valor('sede_origen')), ancho=45)
+        self.ayuda(contenedor, "En un préstamo local la sede de destino es la misma que la de origen. "
+                               "La solicitud queda pendiente hasta que se aprueba.", 5)
         # Al elegir una opción se acomoda el formulario. <<ComboboxSelected>> no
         # está en los apuntes; con <FocusOut> el cambio recién se vería al salir
         # del desplegable.
         self.campos['tipo']['widget'].bind("<<ComboboxSelected>>", lambda evento: self.acomodar_destino())
         self.campos['sede_origen']['widget'].bind("<<ComboboxSelected>>", lambda evento: self.cambio_origen())
-
-        botones = ttk.Frame(self)
-        botones.pack(anchor="w", pady=10)
-        self.boton_guardar = ttk.Button(botones, text="Registrar solicitud", command=self.registrar)
-        self.boton_guardar.pack(side="left", padx=5)
-        ttk.Button(botones, text="Aprobar seleccionado", command=self.aprobar).pack(side="left", padx=5)
-        ttk.Button(botones, text="Cancelar seleccionado", command=self.cancelar).pack(side="left", padx=5)
-        ttk.Button(botones, text="Limpiar", command=self.limpiar).pack(side="left", padx=5)
-
-        marco, self.tabla = self.crear_tabla(self, [
-            ('id', "N°", 40), ('socio', "Socio", 170), ('libro', "Libro", 160), ('ejemplar', "Ejemplar", 80),
-            ('tipo', "Tipo", 130), ('origen', "Origen", 110), ('destino', "Destino", 110),
-            ('estado', "Estado", 90), ('fecha_solicitud', "Solicitud", 80),
-            ('fecha_prestamo', "Préstamo", 80), ('fecha_vencimiento', "Vence", 80),
-            ('multa', "Multa", 170)], alto=7)
-        marco.pack(fill="both", expand=True)
-
-        # --- Devolución del préstamo seleccionado en la tabla
-        ttk.Label(self, text="DEVOLUCIÓN DEL PRÉSTAMO SELECCIONADO").pack(anchor="w", pady=(10, 0), padx=5)
-        devolucion = ttk.Frame(self)
-        devolucion.pack(fill="x")
-        self.crear_campo_fecha(devolucion, 'fecha_devolucion', "Fecha (elegir o dd/mm/aaaa):", 0,
-                               lambda v: validar_fecha_no_futura(validar_fecha(v, "fecha de devolución"),
-                                                                 "fecha de devolución"))
-        self.crear_combo(devolucion, 'estado_fisico', "Estado físico:", 1,
-                         lambda: [(estado, estado) for estado in EstadoFisico.TODOS], ancho=20)
-        self.crear_campo(devolucion, 'observaciones', "Observaciones:", 2,
-                         lambda v: validar_texto_opcional(v, "observaciones", LARGO_OBSERVACIONES), ancho=50)
-        ttk.Label(devolucion, text="Obligatorias si el ejemplar volvió dañado o destruido.",
-                  foreground="gray").grid(row=6, column=1, sticky="w", padx=5)
-        botones = ttk.Frame(devolucion)
-        botones.grid(row=0, column=2, rowspan=3, sticky="n", padx=20)
-        ttk.Button(botones, text="Registrar devolución", command=self.devolver).pack(fill="x", pady=2)
-        ttk.Button(botones, text="Marcar multa pagada", command=self.pagar_multa).pack(fill="x", pady=2)
-        self.refrescar()
 
     def acomodar_destino(self):
         """LOCAL: el destino es el origen y no se puede cambiar.
@@ -98,15 +83,50 @@ class PestaniaPrestamos(PestaniaBase):
         self.acomodar_destino()
 
     def registrar(self):
-        if not self.hay_empleado():
+        if not self.validar_campos(CAMPOS):
+            return False
+        return self.ejecutar(lambda: self.dao.solicitar(self.valor('tipo'), self.valor('socio'), self.valor('ejemplar'),
+                                                        self.valor('sede_origen'), self.valor('sede_destino')),
+                             "Solicitud registrada. Apruébela para prestar el ejemplar.")
+
+    # -------------------------------------------------------- devolución
+
+    def abrir_devolucion(self):
+        id = self.id_seleccionado(self.tabla)
+        if id is None or not self.hay_empleado():
             return
-        obligatorios = ['tipo', 'socio', 'sede_origen', 'sede_destino', 'ejemplar']
-        if not self.validar_campos(obligatorios):
-            return
-        if self.ejecutar(lambda: self.dao.solicitar(self.valor('tipo'), self.valor('socio'), self.valor('ejemplar'),
-                                                    self.valor('sede_origen'), self.valor('sede_destino')),
-                         "Solicitud registrada. Apruébela para prestar el ejemplar."):
-            self.limpiar()
+        fila = self.buscar_fila(id)
+        self.prestamo_devolucion = id
+        self.abrir_modal(f"Registrar devolución del préstamo {id}",
+                         lambda contenedor: self.armar_devolucion(contenedor, fila), self.devolver,
+                         "Registrar devolución")
+
+    def armar_devolucion(self, contenedor, fila):
+        ttk.Label(contenedor, text=f"{fila['libro']} ({fila['ejemplar']}), prestado a {fila['socio']}. "
+                                   f"Vence: {fila['fecha_vencimiento'] or '-'}",
+                  bootstyle="secondary", wraplength=460).grid(row=0, column=0, columnspan=2, sticky="w",
+                                                             padx=5, pady=(0, 6))
+        self.crear_campo_fecha(contenedor, 'fecha_devolucion', "Fecha de devolución:", 1,
+                               lambda v: validar_fecha_no_futura(validar_fecha(v, "fecha de devolución"),
+                                                                 "fecha de devolución"))
+        self.crear_combo(contenedor, 'estado_fisico', "Estado físico:", 2,
+                         lambda: [(estado, estado) for estado in EstadoFisico.TODOS], ancho=20)
+        self.crear_campo(contenedor, 'observaciones', "Observaciones:", 3,
+                         lambda v: validar_texto_opcional(v, "observaciones", LARGO_OBSERVACIONES), ancho=45)
+        self.ayuda(contenedor, "Las observaciones son obligatorias si el ejemplar volvió dañado o destruido. "
+                               "Si hubo atraso se calcula la multa.", 4)
+
+    def devolver(self):
+        if not self.validar_campos(CAMPOS_DEVOLUCION):
+            return False
+        return self.ejecutar(
+            lambda: self.devolucion_dao.registrar(self.prestamo_devolucion, self.valor('fecha_devolucion'),
+                                                  self.valor('estado_fisico'), self.valor('observaciones'),
+                                                  self.empleado_actual()),
+            "Devolución registrada. Si hubo atraso se generó la multa; si es interbibliotecario, "
+            "se creó el remito de devolución.")
+
+    # -------------------------------------------------- acciones directas
 
     def aprobar(self):
         if self.hay_empleado():
@@ -119,26 +139,9 @@ class PestaniaPrestamos(PestaniaBase):
             self.accion_sobre_seleccion(lambda id: self.dao.cancelar(id, self.empleado_actual()),
                                         "¿Cancelar el préstamo seleccionado?", "Préstamo cancelado")
 
-    def devolver(self):
-        if not self.hay_empleado() or not self.validar_campos(CAMPOS_DEVOLUCION):
-            return
-        self.accion_sobre_seleccion(
-            lambda id: self.devolucion_dao.registrar(id, self.valor('fecha_devolucion'), self.valor('estado_fisico'),
-                                                     self.valor('observaciones'), self.empleado_actual()),
-            "¿Registrar la devolución del préstamo seleccionado?",
-            "Devolución registrada. Si hubo atraso se generó la multa; si es interbibliotecario, "
-            "se creó el remito de devolución.")
-
     def pagar_multa(self):
         self.accion_sobre_seleccion(self.dao.pagar_multa, "¿Marcar como pagada la multa del préstamo seleccionado?",
                                     "Multa marcada como pagada")
-
-    def limpiar(self):
-        # No hay modificación de préstamos: solo se vacía el formulario
-        self.campos['sede_destino']['widget'].config(state="readonly")
-        self.limpiar_campos(CAMPOS + CAMPOS_DEVOLUCION)
-        self.poner('fecha_devolucion', date.today().strftime("%d/%m/%Y"))
-        self.tabla.selection_remove(self.tabla.selection())
 
     def refrescar(self):
         self.filas = self.dao.listar()

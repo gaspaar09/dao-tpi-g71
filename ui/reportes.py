@@ -1,7 +1,8 @@
 """Pestaña de Reportes: un desplegable para elegir el reporte y una tabla
 con el resultado."""
 
-from tkinter import ttk
+# Los widgets ttk se toman de ttkbootstrap: son los mismos, con los temas modernos
+import ttkbootstrap as ttk
 
 from reportes import REPORTES
 from ui.base import PestaniaBase
@@ -11,18 +12,20 @@ class PestaniaReportes(PestaniaBase):
 
     def __init__(self, padre):
         super().__init__(padre)
+        self.crear_encabezado("Reportes", "Información de gestión que se actualiza después de cada operación")
 
-        formulario = ttk.Frame(self)
-        formulario.pack(fill="x")
-        self.crear_combo(formulario, 'reporte', "Reporte:", 0,
-                         lambda: [(nombre, nombre) for nombre in REPORTES], ancho=50)
+        barra = ttk.Frame(self)
+        barra.pack(fill="x", pady=(0, 8))
+        selector = ttk.Frame(barra)
+        selector.pack(side="left")
+        self.crear_combo(selector, 'reporte', "Reporte:", 0,
+                         lambda: [(nombre, nombre) for nombre in REPORTES], ancho=55)
+        # Al elegir un reporte se genera en el momento
         self.campos['reporte']['widget'].bind("<<ComboboxSelected>>", lambda evento: self.generar())
-
-        botones = ttk.Frame(self)
-        botones.pack(anchor="w", pady=10)
-        ttk.Button(botones, text="Generar", command=self.generar).pack(side="left", padx=5)
-        self.resumen = ttk.Label(botones, text="Elija un reporte")
-        self.resumen.pack(side="left", padx=20)
+        ttk.Button(barra, text="Generar", bootstyle="primary", command=self.generar).pack(
+            side="left", padx=(12, 0), anchor="n", pady=(5, 0))
+        self.resumen = ttk.Label(barra, text="Elegí un reporte de la lista", bootstyle="secondary")
+        self.resumen.pack(side="right", anchor="n", pady=(8, 0))
 
         # Cada reporte tiene sus propias columnas: la tabla se arma de nuevo
         # al generar, dentro de este contenedor

@@ -42,9 +42,9 @@ La regla general: **el DAO valida todo** con `validadores.py`. La pantalla solo 
 | 7 | Devolver dos veces, con fecha futura, dañado sin observaciones | Transición DEVUELTO→DEVUELTO no permitida; fecha no futura; observaciones obligatorias si está DAÑADO o DESTRUIDO | [dao/devolucion_dao.py:24](../dao/devolucion_dao.py#L24) | `test_devolucion_dao.py` |
 | 8 | Remito: cancelar uno DESPACHADO, saltar de EMPAQUETADO a RECIBIDO, extraviar uno que no está EN_TRANSITO | No se puede saltar: "Avanzar" solo pasa al siguiente. Lo demás lo rechaza el estado actual con `TransicionInvalidaError` | [patrones/estado_remito.py:33](../patrones/estado_remito.py#L33) | `test_estado_remito.py` (recorre la tabla completa con un `for`) |
 | 9 | Reserva en una sede de baja; reserva repetida | "dada de baja" / "ya tiene una reserva PENDIENTE" | [dao/reserva_dao.py](../dao/reserva_dao.py) | `test_reserva_dao.py` |
-| 10 | Letras en un campo numérico, Ctrl+V, doble clic en Guardar | `validate="key"` rechaza cualquier carácter que no sea un dígito, también al pegar, pero acepta el campo vacío. Doble clic: el cuadro de diálogo bloquea la ventana y el segundo intento choca con el control de duplicados (también en las solicitudes de préstamo) | [ui/base.py:37](../ui/base.py#L37), [dao/prestamo_dao.py:65](../dao/prestamo_dao.py#L65) | `test_prestamo_dao.py` |
+| 10 | Letras en un campo numérico, Ctrl+V, doble clic en Guardar | `validate="key"` rechaza cualquier carácter que no sea un dígito, también al pegar, pero acepta el campo vacío. Doble clic: el cuadro de diálogo bloquea la ventana y el segundo intento choca con el control de duplicados (también en las solicitudes de préstamo) | [ui/base.py:178](../ui/base.py#L178), [dao/prestamo_dao.py:65](../dao/prestamo_dao.py#L65) | `test_prestamo_dao.py` |
 | 11 | Cancelar un préstamo EN_ENVIO con el remito despachado; reserva vencida | `quitar_item` solo lo admite EMPAQUETADO. `procesar_vencimientos()` vence la reserva y libera el ejemplar | [dao/reserva_dao.py:73](../dao/reserva_dao.py#L73) | `test_remito_dao.py`, `test_reserva_dao.py` |
-| 12 | Operar sin empleado actual | "Seleccione el empleado actual…" | [ui/base.py:226](../ui/base.py#L226) | (interfaz) |
+| 12 | Operar sin empleado actual | "Seleccione el empleado actual…" | [ui/base.py:408](../ui/base.py#L408) | (interfaz) |
 
 Además, `tests/test_entradas_invalidas.py` prueba todos los valores raros del checklist (vacío, espacios, emojis, `1e5`, `1,5`, números enormes, `30/02`, ids que no existen) contra cada alta y operación de los DAO. Siempre tienen que terminar en uno de nuestros dos errores, nunca en un error de la base.
 
@@ -93,7 +93,7 @@ Las transiciones del préstamo son pocas y no tienen comportamiento propio en ca
 | Herencia de la clase base de las pestañas | Herencia, Polimorfismo | `ui/base.py`; `avisar_cambios_a` en Catálogo es polimorfismo |
 | `@property` (`esta_vencido`, `estado_efectivo`, `estado_actual`) | Propiedades | `modelos/prestamo.py`, `modelos/remito.py` |
 | State y Strategy | Patrones State y Strategy | `patrones/` |
-| `ttk.Notebook`, `Treeview`, `Combobox`, `Scrollbar`, tema "clam" | Clase TTK | `main.py`, `ui/` |
+| `ttk.Notebook`, `Treeview`, `Combobox`, `Scrollbar`, `Checkbutton` (con los temas de ttkbootstrap) | Clase TTK | `main.py`, `ui/` |
 | `validate="key"` con `%P`, `<FocusOut>`, `<FocusIn>`, `<Return>` | Validar texto, Eventos en Tkinter | `ui/base.py` |
 | `Listbox` y `curselection()` | Manejo de eventos de listbox | autores del libro, préstamos del remito |
 | Clases `TestXxx`, `pytest.raises(match=…)`, bucles `for` | Testing unitario, Pytest | `tests/` |
@@ -113,6 +113,10 @@ Las transiciones del préstamo son pocas y no tienen comportamiento propio en ca
 | `<ButtonRelease-1>` en una tabla | Mostrar el detalle (horarios, historial del remito) al hacer clic | Un botón "Ver detalle" extra |
 | `<KeyRelease>` en el DNI | Poner los puntos automáticamente después de cada tecla | `<Key>` corre antes de que el carácter entre al campo |
 | Combobox de fecha **sin** `readonly` | La fecha se elige de una lista o se escribe | `tkcalendar` (librería externa, excluida) |
+| `ttkbootstrap` (temas modernos para ttk) | Decisión del grupo para que la interfaz se vea actual. Solo cambia la apariencia: los widgets son los mismos de ttk (`import ttkbootstrap as ttk`), con `bootstyle` para el color de los botones y mensajes. Arriba de la ventana se elige el tema | `ttk.Style().theme_use("clam")`, que se ve anticuado |
+| Ventanas modales (`ttk.Toplevel`, `transient`, `grab_set`) | Decisión del grupo para ordenar la pantalla: los formularios se abren en una ventana aparte, con Cancelar y la acción al pie, y la tabla ocupa la pestaña. Mientras el modal está abierto no se puede tocar el resto de la app | Formularios fijos arriba de cada tabla, con los botones mezclados |
+| Íconos ✏ y 🗑 en cada fila de los ABM (`identify_row`, `identify_column`, `bbox`, `font.measure`) | Decisión del grupo: el `Treeview` no admite botones dentro de las filas, así que la última columna muestra los íconos como texto y un clic se ubica con `identify_row`/`identify_column` y el ancho de cada ícono. Solo en los ABM simples (editar y dar de baja); en préstamos, reservas y remitos todas las acciones son botones de la barra, con "Cancelar" en rojo a la derecha de todo | Botones Editar y Eliminar arriba de la tabla |
+| `ttk.Checkbutton` sin variable (`instate(["selected"])`) | Marcar los días de apertura de la sede; está en los apuntes, pero sin `IntVar`, que no usamos | Un Combobox de un solo día |
 
 ---
 

@@ -1,12 +1,10 @@
 """Pestaña de Ejemplares (copias físicas de los libros)."""
 
-from tkinter import ttk
-
 from constantes import EstadoFisico
 from dao.ejemplar_dao import EjemplarDAO
 from dao.libro_dao import LibroDAO
 from dao.sede_dao import SedeDAO
-from ui.base import PestaniaBase
+from ui.base import PestaniaBase, ICONO_EDITAR, ICONO_BAJA
 from validadores import validar_codigo_inventario
 
 CAMPOS = ['codigo_inventario', 'libro', 'sede', 'estado_fisico']
@@ -15,27 +13,32 @@ CAMPOS_FIJOS = ['codigo_inventario', 'libro', 'sede']
 
 
 class PestaniaEjemplares(PestaniaBase):
+    TITULO_NUEVO = "Nuevo ejemplar"
+    TITULO_EDITAR = "Cambiar estado físico"
 
     def __init__(self, padre):
         super().__init__(padre)
         self.dao = EjemplarDAO()
-
-        formulario = ttk.Frame(self)
-        formulario.pack(fill="x")
-        self.crear_campo(formulario, 'codigo_inventario', "Código de inventario:", 0, validar_codigo_inventario)
-        self.crear_combo(formulario, 'libro', "Libro:", 1, LibroDAO().opciones, ancho=50)
-        self.crear_combo(formulario, 'sede', "Sede:", 2, SedeDAO().opciones)
-        self.crear_combo(formulario, 'estado_fisico', "Estado físico:", 3,
-                         lambda: [(estado, estado) for estado in EstadoFisico.TODOS])
-        ttk.Label(formulario, text="Al editar solo se cambia el estado físico.",
-                  foreground="gray").grid(row=8, column=1, sticky="w", padx=5)
-
-        self.crear_botones(self, [("Dar de baja", self.dar_de_baja)]).pack(anchor="w", pady=10)
-        marco, self.tabla = self.crear_tabla(self, [
-            ('codigo_inventario', "Código", 110), ('libro', "Libro", 260), ('sede', "Sede", 180),
-            ('estado', "Estado", 110), ('estado_fisico', "Estado físico", 110)])
-        marco.pack(fill="both", expand=True)
+        self.crear_encabezado("Ejemplares", "Copias físicas de cada título, cada una en una sede",
+                              [("Nuevo ejemplar", self.nuevo, True)])
+        self.crear_barra_seleccion("Con el ejemplar elegido:", [])
+        self.crear_tabla_principal(self, [
+            ('codigo_inventario', "Código", 120), ('libro', "Libro", 300), ('sede', "Sede", 190),
+            ('estado', "Estado", 120), ('estado_fisico', "Estado físico", 120)],
+            doble_clic=self.editar_seleccionado,
+            iconos=[(ICONO_EDITAR, self.editar_seleccionado), (ICONO_BAJA, self.dar_de_baja)]).pack(fill="both", expand=True)
         self.refrescar()
+
+    def armar_formulario(self, contenedor):
+        self.crear_campo(contenedor, 'codigo_inventario', "Código de inventario:", 0, validar_codigo_inventario)
+        self.crear_combo(contenedor, 'libro', "Libro:", 1, LibroDAO().opciones, ancho=45)
+        self.crear_combo(contenedor, 'sede', "Sede:", 2, SedeDAO().opciones)
+        self.crear_combo(contenedor, 'estado_fisico', "Estado físico:", 3,
+                         lambda: [(estado, estado) for estado in EstadoFisico.TODOS])
+        if self.id_editando is None:
+            self.ayuda(contenedor, "El código es el que está impreso en el ejemplar y no se puede repetir.", 4)
+        else:
+            self.ayuda(contenedor, "Código, libro y sede identifican la copia: solo cambia el estado físico.", 4)
 
     def campos_formulario(self):
         if self.id_editando is None:
@@ -57,15 +60,6 @@ class PestaniaEjemplares(PestaniaBase):
         self.poner('estado_fisico', fila['estado_fisico'])
         for nombre in CAMPOS_FIJOS:
             self.campos[nombre]['widget'].config(state="disabled")
-
-    def limpiar(self):
-        for nombre in CAMPOS_FIJOS:
-            estado = "readonly" if self.es_combo(nombre) else "normal"
-            self.campos[nombre]['widget'].config(state=estado)
-        super().limpiar_campos(CAMPOS)
-        self.id_editando = None
-        self.boton_guardar.config(text="Guardar")
-        self.tabla.selection_remove(self.tabla.selection())
 
     def dar_de_baja(self):
         self.accion_sobre_seleccion(self.dao.dar_de_baja, "¿Dar de baja el ejemplar seleccionado?",

@@ -38,7 +38,7 @@ Respondé siempre en español.
 | `dataclasses`, `typing` | Clases normales |
 | `pytest.mark.parametrize`, fixtures | Clases `TestXxx`, bucles `for` con `pytest.raises` y funciones auxiliares |
 | `unittest`, `mock` | Solo `pytest` |
-| `Toplevel`, `StringVar`, `tkcalendar`, `customtkinter` | Un `ttk.Notebook` con pestañas, `entry.get()`, fechas como `ttk.Combobox` editable (lista de días recientes y texto dd/mm/aaaa) |
+| `StringVar`, `tkcalendar`, `customtkinter` | Un `ttk.Notebook` con pestañas, `entry.get()`, fechas como `ttk.Combobox` editable (lista de días recientes y texto dd/mm/aaaa) |
 | `logging`, `os`, `pathlib`, `argparse` | No usar |
 
 ### Excepciones ya aprobadas (necesarias y mínimas)
@@ -67,7 +67,7 @@ Orden de precedencia: `TPI_ENUNCIADO.md` > este archivo > `diagrama-clases.mmd` 
 | `docs/APUNTES.md` | Apuntes de la cátedra: ver "Regla principal". |
 
 ## Stack
-- **Python 3.10+**, entorno virtual `.venv`. `requirements.txt`: `sqlalchemy`, `pytest`.
+- **Python 3.10+**, entorno virtual `.venv`. `requirements.txt`: `sqlalchemy`, `pytest`, `ttkbootstrap`.
 - **Persistencia:** SQLite + SQLAlchemy ORM, estilo clásico de los apuntes.
 - **Interfaz:** Tkinter + ttk, de escritorio.
 - **Tests:** pytest. Ejecutar con `python -m pytest` desde la raíz, así encuentra los módulos del proyecto.
@@ -102,7 +102,9 @@ Cada carpeta de código lleva un `__init__.py` vacío.
 - Para tests, `database.py` permite apuntar a `sqlite:///:memory:` (aparece en los apuntes).
 
 ## Interfaz (Tkinter + ttk)
-- `main.py` crea `tk.Tk()`, aplica `ttk.Style().theme_use("clam")` y arma un `ttk.Notebook` con una pestaña por módulo: Sedes, Empleados, Socios, Catálogo (libros, autores, categorías), Ejemplares, Préstamos, Reservas, Remitos, Consulta de disponibilidad y Reportes. Cada pestaña es una subclase de `ttk.Frame` en `ui/`. Para no repetir código entre pestañas, usar una clase base en `ui/base.py` con lo común (armado de campos, etiqueta de error en rojo, limpiar formulario) y que cada pestaña herede de ella (herencia, vista en clase).
+- **Apariencia (decisión del grupo, más allá de los apuntes):** `ttkbootstrap`. Las pestañas importan `import ttkbootstrap as ttk` (mismos widgets ttk, con temas modernos); los botones principales llevan `bootstyle="primary"`, los destructivos `"danger-outline"`, los errores `bootstyle="danger"` y las ayudas `"secondary"`. El tema se elige arriba de la ventana (`TEMAS` en `main.py`).
+- **Organización de cada pestaña (decisión del grupo):** encabezado con título y descripción; debajo, una barra que empieza a la izquierda con la acción principal ("Nuevo socio") y sigue con las acciones sobre la fila elegida (desactivadas hasta elegir una; las destructivas aparte, a la derecha y en rojo); y la tabla con el resto del espacio. En los ABM simples (sedes, empleados, socios, catálogo, ejemplares) editar y dar de baja son los íconos ✏ y 🗑 de la última columna de cada fila (`crear_tabla_principal(..., iconos=...)`). En Préstamos, Reservas y Remitos, "Cancelar" es un botón rojo lleno a la derecha de todo de la barra (el DAO decide si se puede cancelar). Las columnas toman el ancho de su texto más largo (título o celda) y la letra es 2 puntos más grande que la de Tk. Los formularios (alta, edición, devolución, incidencia, cancelar o extraviar un remito) se abren en una ventana modal (`ttk.Toplevel` con `grab_set`) con Cancelar y la acción al pie. Todo esto vive en `PestaniaBase` (`crear_encabezado`, `crear_barra_seleccion`, `abrir_modal`, `abrir_formulario`).
+- `main.py` crea `ttk.Window(themename=...)` y arma un `ttk.Notebook` con una pestaña por módulo: Sedes, Empleados, Socios, Catálogo (libros, autores, categorías), Ejemplares, Préstamos, Reservas, Remitos, Consulta de disponibilidad y Reportes. Cada pestaña es una subclase de `ttk.Frame` en `ui/`. Para no repetir código entre pestañas, usar una clase base en `ui/base.py` con lo común (armado de campos, etiqueta de error en rojo, limpiar formulario) y que cada pestaña herede de ella (herencia, vista en clase).
 - Listados en `ttk.Treeview`; selecciones con `ttk.Combobox` (y validar igualmente que el valor esté entre las opciones); campos de texto con `ttk.Entry`.
 - Validación en la interfaz, según los apuntes ("Validar texto" y ejercicios 1 a 6): `validate="key"` con `validatecommand` para impedir caracteres imposibles en campos numéricos, y evento `<FocusOut>` para mostrar una advertencia **en rojo debajo del campo**. Al enviar, `messagebox.showerror` con la lista de errores.
 - **Ojo con el ejemplo de los apuntes:** `new_value.isnumeric() and int(new_value) >= 0` rechaza la cadena vacía y el usuario no puede borrar el campo. La validación en vivo debe aceptar `""`; la verificación estricta ocurre al enviar.

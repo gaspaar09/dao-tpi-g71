@@ -1,7 +1,11 @@
 """Punto de entrada: crea las tablas y abre la ventana principal."""
 
-import tkinter as tk
-from tkinter import ttk, messagebox
+import tkinter.font as tkfont
+from tkinter import messagebox
+
+# Los widgets ttk se toman de ttkbootstrap: son los mismos, con los temas modernos
+import ttkbootstrap as ttk
+
 
 from database import crear_tablas
 # Se importan los modelos para que Base los conozca antes de crear las tablas
@@ -16,6 +20,7 @@ import modelos.remito
 from dao.empleado_dao import EmpleadoDAO
 from dao.reserva_dao import ReservaDAO
 from datos_ejemplo import cargar_datos_ejemplo
+from ui.base import aplicar_estilo_tablas
 from ui.sedes import PestaniaSedes
 from ui.empleados import PestaniaEmpleados
 from ui.socios import PestaniaSocios
@@ -27,20 +32,31 @@ from ui.remitos import PestaniaRemitos
 from ui.consulta import PestaniaConsulta
 from ui.reportes import PestaniaReportes
 
+# Temas de ttkbootstrap para elegir arriba de la ventana; el primero es el que abre
+TEMAS = ["bootstrap-light", "minty-light", "pulse-light", "nord-light", "sandstone-light",
+         "bootstrap-dark", "nord-dark"]
+
 
 def main():
     crear_tablas()
     # Las reservas cuyo plazo pasó se vencen al abrir la app (y liberan su ejemplar)
     ReservaDAO().procesar_vencimientos()
 
-    ventana = tk.Tk()
+    # ttkbootstrap: ventana de Tkinter con temas modernos para todos los widgets ttk
+    ventana = ttk.Window(themename=TEMAS[0])
+    # Letra 2 puntos más grande en toda la app: se agrandan las fuentes con
+    # nombre que usan los widgets (texto, campos y títulos de las tablas)
+    for nombre in ["TkDefaultFont", "TkTextFont", "TkHeadingFont", "TkMenuFont"]:
+        fuente = tkfont.nametofont(nombre)
+        fuente.configure(size=fuente.cget("size") + 2)
     ventana.title("Biblioteca - Préstamos interbibliotecarios")
-    # El contenido de las pestañas pide unos 1370x960: se abre con ese tamaño,
-    # sin pasarse de la pantalla (en pantallas chicas conviene maximizar)
+    # Tamaño al salir de maximizada: unos 1380x1000, sin pasarse de la pantalla
     ancho = min(1380, ventana.winfo_screenwidth())
-    alto = min(960, ventana.winfo_screenheight() - 80)
+    alto = min(1000, ventana.winfo_screenheight() - 80)
     ventana.geometry(f"{ancho}x{alto}+0+0")
-    ttk.Style().theme_use("clam")
+    # Se abre maximizada: la tabla de Préstamos necesita todo el ancho para
+    # mostrar la columna Acciones sin desplazarse
+    ventana.state("zoomed")
 
     # Empleado actual: no hay login, así que se elige acá quién opera.
     # Lo usan las operaciones que registran quién las hizo (préstamos, reservas, devoluciones y remitos).
@@ -107,6 +123,18 @@ def main():
             messagebox.showinfo("Datos de ejemplo", "La base ya tiene datos: no se cargó nada")
 
     ttk.Button(marco_superior, text="Cargar datos de ejemplo", command=cargar_ejemplo).pack(side="right")
+
+    # Selector de tema: cambia el aspecto de toda la ventana en el momento
+    combo_tema = ttk.Combobox(marco_superior, state="readonly", values=TEMAS, width=18)
+    combo_tema.set(TEMAS[0])
+    combo_tema.pack(side="right", padx=(5, 20))
+    ttk.Label(marco_superior, text="Tema:").pack(side="right")
+    def cambiar_tema():
+        ttk.Style().theme_use(combo_tema.get())
+        # Los estilos de las tablas dependen del tema: se vuelven a aplicar
+        aplicar_estilo_tablas()
+
+    combo_tema.bind("<<ComboboxSelected>>", lambda evento: cambiar_tema())
 
     ventana.mainloop()
 

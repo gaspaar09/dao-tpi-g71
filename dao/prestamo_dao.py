@@ -131,6 +131,11 @@ class PrestamoDAO:
                     'tipo': prestamo.tipo,
                     'origen': prestamo.sede_origen.nombre,
                     'destino': prestamo.sede_destino.nombre,
+                    # Versiones cortas para la tabla de la pestaña
+                    'socio_nombre': f"{prestamo.socio.nombre} {prestamo.socio.apellido}",
+                    'ruta': f"{prestamo.sede_origen.nombre} → {prestamo.sede_destino.nombre}",
+                    'multa_corta': (f"${prestamo.multa.monto:.2f} {prestamo.multa.estado.lower()}"
+                                    if prestamo.multa else ""),
                     'estado': prestamo.estado_efectivo,
                     'fecha_solicitud': formatear_fecha(prestamo.fecha_solicitud),
                     'fecha_prestamo': formatear_fecha(prestamo.fecha_prestamo),
