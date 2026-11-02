@@ -8,9 +8,9 @@ from constantes import DiaSemana
 from excepciones import ValidacionError
 from validadores import (normalizar_texto, validar_texto, validar_texto_con_letras, validar_texto_opcional,
                          validar_solo_letras, validar_direccion, validar_nombre_con_numeros, validar_entero, validar_numero_no_negativo,
-                         validar_nro_socio, validar_anio_edicion, validar_dni, formatear_dni, validar_email,
+                         validar_anio_edicion, validar_dni, formatear_dni, validar_email,
                          validar_telefono, validar_prefijo_pais, validar_isbn, validar_codigo_inventario,
-                         validar_legajo, validar_fecha, validar_fecha_no_futura,
+                         validar_fecha, validar_fecha_no_futura,
                          validar_hora, validar_rango_horario, validar_opcion)
 
 # Textos maliciosos o raros que los profes suelen probar
@@ -121,12 +121,6 @@ class TestEntero:
         for valor in ["-5", "0", "99999999999999999999"]:
             with pytest.raises(ValidacionError, match="debe estar entre"):
                 validar_entero(valor, "cantidad", 1)
-
-    def test_nro_socio(self):
-        assert validar_nro_socio("15") == 15
-        for valor in ["-1", "0", "abc"]:
-            with pytest.raises(ValidacionError):
-                validar_nro_socio(valor)
 
     def test_anio_edicion(self):
         assert validar_anio_edicion("1963") == 1963
@@ -265,18 +259,6 @@ class TestCodigoInventario:
         for valor in ["EJ_001", "EJ 001", "EJ.001", "EJÑ01"]:
             with pytest.raises(ValidacionError, match="letras, números y guiones"):
                 validar_codigo_inventario(valor)
-
-
-class TestLegajo:
-    def test_valido(self):
-        assert validar_legajo(" e123 ") == "E123"
-
-    def test_invalido(self):
-        for valor in ["E-123", "E 123", "E_123", "<script>"]:
-            with pytest.raises(ValidacionError, match="letras y números"):
-                validar_legajo(valor)
-        with pytest.raises(ValidacionError, match="no puede superar"):
-            validar_legajo("A" * 21)
 
 
 class TestFecha:

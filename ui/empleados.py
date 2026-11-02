@@ -1,15 +1,16 @@
 """Pestaña de Empleados."""
 
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 from config import LARGO_NOMBRE_EMPLEADO
 from constantes import RolEmpleado
 from dao.empleado_dao import EmpleadoDAO
 from dao.sede_dao import SedeDAO
 from ui.base import PestaniaBase
-from validadores import validar_legajo, validar_solo_letras
+from validadores import validar_solo_letras
 
-CAMPOS = ['legajo', 'nombre', 'rol', 'sede']
+# El legajo no se carga: lo asigna el sistema según el rol (B1, B2... / A1, A2...)
+CAMPOS = ['nombre', 'rol', 'sede']
 
 
 class PestaniaEmpleados(PestaniaBase):
@@ -20,11 +21,10 @@ class PestaniaEmpleados(PestaniaBase):
 
         formulario = ttk.Frame(self)
         formulario.pack(fill="x")
-        self.crear_campo(formulario, 'legajo', "Legajo:", 0, validar_legajo)
-        self.crear_campo(formulario, 'nombre', "Nombre y apellido:", 1,
+        self.crear_campo(formulario, 'nombre', "Nombre y apellido:", 0,
                          lambda v: validar_solo_letras(v, "nombre", 2, LARGO_NOMBRE_EMPLEADO))
-        self.crear_combo(formulario, 'rol', "Rol:", 2, lambda: [(rol, rol) for rol in RolEmpleado.TODOS])
-        self.crear_combo(formulario, 'sede', "Sede:", 3, SedeDAO().opciones)
+        self.crear_combo(formulario, 'rol', "Rol:", 1, lambda: [(rol, rol) for rol in RolEmpleado.TODOS])
+        self.crear_combo(formulario, 'sede', "Sede:", 2, SedeDAO().opciones)
 
         self.crear_botones(self, [("Eliminar", self.eliminar)]).pack(anchor="w", pady=10)
 
@@ -37,13 +37,23 @@ class PestaniaEmpleados(PestaniaBase):
         return CAMPOS
 
     def crear(self):
-        self.dao.crear(self.valor('legajo'), self.valor('nombre'), self.valor('rol'), self.valor('sede'))
+        self.legajo_asignado = self.dao.crear(self.valor('nombre'), self.valor('rol'), self.valor('sede'))
 
     def modificar(self, id):
-        self.dao.modificar(id, self.valor('legajo'), self.valor('nombre'), self.valor('rol'), self.valor('sede'))
+        anterior = self.buscar_fila(id)['legajo']
+        legajo = self.dao.modificar(id, self.valor('nombre'), self.valor('rol'), self.valor('sede'))
+        if legajo != anterior:
+            self.legajo_asignado = legajo
+
+    def guardar(self):
+        """Como el legajo lo pone el sistema, se informa cuál quedó (en el
+        alta, o al cambiar el rol)."""
+        self.legajo_asignado = None
+        super().guardar()
+        if self.legajo_asignado is not None:
+            messagebox.showinfo("Legajo", f"Se asignó el legajo {self.legajo_asignado}")
 
     def cargar_formulario(self, fila):
-        self.poner('legajo', fila['legajo'])
         self.poner('nombre', fila['nombre'])
         self.poner('rol', fila['rol'])
         self.poner('sede', fila['sede_id'])

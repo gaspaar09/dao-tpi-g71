@@ -130,3 +130,5 @@ class RolEmpleado:
     BIBLIOTECARIO = "BIBLIOTECARIO"
     ADMINISTRADOR = "ADMINISTRADOR"
     TODOS = [BIBLIOTECARIO, ADMINISTRADOR]
+    # Letra con la que empieza el legajo según el rol (B1, B2... / A1, A2...)
+    PREFIJO_LEGAJO = {BIBLIOTECARIO: "B", ADMINISTRADOR: "A"}

@@ -17,7 +17,7 @@ dao = EjemplarDAO()
 def preparar():
     """Base con una sede y un libro; devuelve (libro_id, sede_id)."""
     preparar_base_en_memoria()
-    SedeDAO().crear("Central", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00")
+    SedeDAO().crear("Central", "Calle 1", "54", "3514000000", "", [(DiaSemana.LUNES, "08:00", "18:00")])
     CategoriaDAO().crear("Novela")
     AutorDAO().crear("Julio", "Cortázar")
     LibroDAO().crear("9789500700011", "Rayuela", "Sudamericana", "1963", "Español", TipoMaterial.LIBRO,

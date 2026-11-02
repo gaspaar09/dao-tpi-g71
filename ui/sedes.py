@@ -1,15 +1,16 @@
 """Pestaña de Sedes: alta, modificación, baja y horarios."""
 
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 from config import LARGO_NOMBRE_SEDE, LARGO_DIRECCION
 from constantes import DiaSemana, PaisTelefono
 from dao.sede_dao import SedeDAO
 from ui.base import PestaniaBase
-from validadores import validar_nombre_con_numeros, validar_direccion, validar_telefono, validar_email, validar_hora
+from validadores import validar_nombre_con_numeros, validar_direccion, validar_telefono, validar_email
 
 CAMPOS_SEDE = ['nombre', 'direccion', 'prefijo', 'telefono', 'email']
-CAMPOS_HORARIO = ['dia', 'apertura', 'cierre']
+# Horarios que ofrecen los desplegables: cada 30 minutos, de 06:00 a 23:30
+HORAS = [f"{hora:02d}:{minuto:02d}" for hora in range(6, 24) for minuto in [0, 30]]
 
 
 class PestaniaSedes(PestaniaBase):
@@ -34,19 +35,28 @@ class PestaniaSedes(PestaniaBase):
         self.crear_campo(datos, 'email', "Email (opcional):", 4,
                          lambda v: validar_email(v, obligatorio=False))
 
-        # El horario sirve para el alta (la sede nace con uno) y para agregar más
-        horario = ttk.Frame(formulario)
-        horario.pack(side="left", anchor="n", padx=20)
-        ttk.Label(horario, text="Horario (al dar de alta o para agregar)").grid(row=0, column=0, columnspan=2,
-                                                                                 sticky="w", padx=5)
-        marco_campos = ttk.Frame(horario)
-        marco_campos.grid(row=1, column=0, columnspan=2, sticky="w")
-        self.crear_combo(marco_campos, 'dia', "Día:", 0,
-                         lambda: [(dia, dia) for dia in DiaSemana.TODOS], ancho=15)
-        self.crear_campo(marco_campos, 'apertura', "Apertura (HH:MM):", 1,
-                         lambda v: validar_hora(v, "hora de apertura"), ancho=10)
-        self.crear_campo(marco_campos, 'cierre', "Cierre (HH:MM):", 2,
-                         lambda v: validar_hora(v, "hora de cierre"), ancho=10)
+        # Semana de la sede: se marcan los días que abre y cada uno tiene su horario
+        semana = ttk.Frame(formulario)
+        semana.pack(side="left", anchor="n", padx=20)
+        ttk.Label(semana, text="Días y horarios de apertura").grid(row=0, column=0, columnspan=3, sticky="w", padx=5)
+        ttk.Label(semana, text="Apertura").grid(row=1, column=1, sticky="w", padx=5)
+        ttk.Label(semana, text="Cierre").grid(row=1, column=2, sticky="w", padx=5)
+        # día -> {'marcado': Checkbutton, 'apertura': Combobox, 'cierre': Combobox}
+        self.dias = {}
+        for fila, dia in enumerate(DiaSemana.TODOS, start=2):
+            marcado = ttk.Checkbutton(semana, text=dia, command=lambda d=dia: self.cambio_dia(d))
+            marcado.grid(row=fila, column=0, sticky="w", padx=5, pady=2)
+            apertura = ttk.Combobox(semana, values=HORAS, state="disabled", width=7)
+            apertura.grid(row=fila, column=1, sticky="w", padx=5, pady=2)
+            cierre = ttk.Combobox(semana, values=HORAS, state="disabled", width=7)
+            cierre.grid(row=fila, column=2, sticky="w", padx=5, pady=2)
+            apertura.bind("<<ComboboxSelected>>", lambda evento, d=dia: self.acomodar_horas(d))
+            cierre.bind("<<ComboboxSelected>>", lambda evento, d=dia: self.acomodar_horas(d))
+            self.dias[dia] = {'marcado': marcado, 'apertura': apertura, 'cierre': cierre}
+        ttk.Button(semana, text="Copiar el horario del primer día marcado a los demás",
+                   command=self.copiar_horario).grid(row=len(DiaSemana.TODOS) + 2, column=0, columnspan=3,
+                                                     sticky="w", padx=5, pady=5)
+        self.limpiar_semana()
 
         self.crear_botones(self, [("Dar de baja", self.dar_de_baja),
                                   ("Volver a dar de alta", self.reactivar)]).pack(anchor="w", pady=10)
@@ -58,40 +68,38 @@ class PestaniaSedes(PestaniaBase):
         # Al hacer clic en una sede se muestran sus horarios abajo
         self.tabla.bind("<ButtonRelease-1>", lambda evento: self.mostrar_horarios())
 
-        self.titulo_horarios = ttk.Label(self, text="Horarios: haga clic en una sede")
+        self.titulo_horarios = ttk.Label(self, text="Horarios: haga clic en una sede (para cambiarlos, Editar seleccionado)")
         self.titulo_horarios.pack(anchor="w", pady=(10, 0))
         marco, self.tabla_horarios = self.crear_tabla(self, [
             ('dia', "Día", 120), ('apertura', "Apertura", 100), ('cierre', "Cierre", 100)], alto=5)
         marco.pack(fill="x")
-        botones = ttk.Frame(self)
-        botones.pack(anchor="w", pady=5)
-        ttk.Button(botones, text="Agregar horario a la sede", command=self.agregar_horario).pack(side="left", padx=5)
-        ttk.Button(botones, text="Quitar horario seleccionado", command=self.quitar_horario).pack(side="left", padx=5)
 
         self.poner('prefijo', PaisTelefono.ARGENTINA)
         self.refrescar()
 
     def campos_formulario(self):
-        # En el alta se pide el primer horario; al modificar, solo los datos de la sede
-        if self.id_editando is None:
-            return CAMPOS_SEDE + CAMPOS_HORARIO
         return CAMPOS_SEDE
 
     def crear(self):
         self.dao.crear(self.valor('nombre'), self.valor('direccion'), self.valor('prefijo'), self.valor('telefono'),
-                       self.valor('email'), self.valor('dia'), self.valor('apertura'), self.valor('cierre'))
+                       self.valor('email'), self.horarios_marcados())
 
     def modificar(self, id):
         self.dao.modificar(id, self.valor('nombre'), self.valor('direccion'), self.valor('prefijo'), self.valor('telefono'),
-                           self.valor('email'))
+                           self.valor('email'), self.horarios_marcados())
 
     def cargar_formulario(self, fila):
         for nombre in CAMPOS_SEDE:
             self.poner(nombre, fila[nombre])
+        for horario in self.dao.listar_horarios(fila['id']):
+            self.marcar_dia(horario['dia'], True)
+            self.dias[horario['dia']]['apertura'].set(horario['apertura'])
+            self.dias[horario['dia']]['cierre'].set(horario['cierre'])
+            self.acomodar_horas(horario['dia'])
 
     def limpiar(self):
         super().limpiar()
-        self.limpiar_campos(CAMPOS_HORARIO)
+        self.limpiar_semana()
         self.poner('prefijo', PaisTelefono.ARGENTINA)
 
     def dar_de_baja(self):
@@ -110,6 +118,61 @@ class PestaniaSedes(PestaniaBase):
 
     # ---------------------------------------------------------- horarios
 
+    def esta_marcado(self, dia):
+        return self.dias[dia]['marcado'].instate(['selected'])
+
+    def marcar_dia(self, dia, marcado):
+        """Marca o desmarca el día. Los horarios de un día sin marcar no se
+        pueden elegir (la sede no abre ese día)."""
+        widgets = self.dias[dia]
+        # Sin variable asociada, el Checkbutton nace "a medias" (alternate): se limpia
+        widgets['marcado'].state(['!alternate', 'selected' if marcado else '!selected'])
+        for nombre in ['apertura', 'cierre']:
+            if marcado:
+                widgets[nombre].config(state="readonly")
+            else:
+                widgets[nombre].set("")
+                widgets[nombre].config(state="disabled", values=HORAS)
+
+    def cambio_dia(self, dia):
+        self.marcar_dia(dia, self.esta_marcado(dia))
+
+    def acomodar_horas(self, dia):
+        """Cada desplegable ofrece solo horas coherentes con el otro: el
+        cierre, posteriores a la apertura; la apertura, anteriores al cierre.
+        Así no se puede elegir un cierre anterior a la apertura ni al revés."""
+        apertura = self.dias[dia]['apertura']
+        cierre = self.dias[dia]['cierre']
+        # "HH:MM" con ceros adelante se compara bien como texto
+        if apertura.get():
+            cierre.config(values=[hora for hora in HORAS if hora > apertura.get()])
+        if cierre.get():
+            apertura.config(values=[hora for hora in HORAS if hora < cierre.get()])
+
+    def limpiar_semana(self):
+        for dia in DiaSemana.TODOS:
+            self.marcar_dia(dia, False)
+
+    def horarios_marcados(self):
+        """[(día, apertura, cierre)] de los días marcados, para el DAO."""
+        return [(dia, self.dias[dia]['apertura'].get(), self.dias[dia]['cierre'].get())
+                for dia in DiaSemana.TODOS if self.esta_marcado(dia)]
+
+    def copiar_horario(self):
+        """Mismo horario para toda la semana: copia el del primer día marcado
+        a los demás días marcados."""
+        marcados = [dia for dia in DiaSemana.TODOS if self.esta_marcado(dia)]
+        if not marcados:
+            messagebox.showwarning("Atención", "Marque los días de apertura")
+            return
+        modelo = self.dias[marcados[0]]
+        for dia in marcados[1:]:
+            self.dias[dia]['apertura'].config(values=HORAS)
+            self.dias[dia]['cierre'].config(values=HORAS)
+            self.dias[dia]['apertura'].set(modelo['apertura'].get())
+            self.dias[dia]['cierre'].set(modelo['cierre'].get())
+            self.acomodar_horas(dia)
+
     def mostrar_horarios(self):
         seleccion = self.tabla.selection()
         if not seleccion:
@@ -117,19 +180,3 @@ class PestaniaSedes(PestaniaBase):
         self.sede_horarios = int(seleccion[0])
         self.titulo_horarios.config(text=f"Horarios de {self.buscar_fila(self.sede_horarios)['nombre']}")
         self.cargar_tabla(self.tabla_horarios, self.dao.listar_horarios(self.sede_horarios))
-
-    def agregar_horario(self):
-        if self.sede_horarios is None:
-            self.id_seleccionado(self.tabla, "Haga clic en la sede a la que quiere agregar el horario")
-            return
-        if not self.validar_campos(CAMPOS_HORARIO):
-            return
-        if self.ejecutar(lambda: self.dao.agregar_horario(self.sede_horarios, self.valor('dia'),
-                                                          self.valor('apertura'), self.valor('cierre')),
-                         "Horario agregado"):
-            self.limpiar_campos(CAMPOS_HORARIO)
-
-    def quitar_horario(self):
-        id = self.id_seleccionado(self.tabla_horarios, "Seleccione el horario a quitar")
-        if id is not None:
-            self.ejecutar(lambda: self.dao.quitar_horario(id), "Horario quitado")

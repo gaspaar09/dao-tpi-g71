@@ -67,9 +67,9 @@ def cargar_datos_maestros():
 
         # Empleados
         empleados = [
-            Empleado(legajo="E001", nombre="Laura Gómez", rol=RolEmpleado.ADMINISTRADOR, sede=central),
-            Empleado(legajo="E002", nombre="Martín Díaz", rol=RolEmpleado.BIBLIOTECARIO, sede=norte),
-            Empleado(legajo="E003", nombre="Sofía Herrera", rol=RolEmpleado.BIBLIOTECARIO, sede=sur),
+            Empleado(legajo="A1", nombre="Laura Gómez", rol=RolEmpleado.ADMINISTRADOR, sede=central),
+            Empleado(legajo="B1", nombre="Martín Díaz", rol=RolEmpleado.BIBLIOTECARIO, sede=norte),
+            Empleado(legajo="B2", nombre="Sofía Herrera", rol=RolEmpleado.BIBLIOTECARIO, sede=sur),
         ]
 
         # Socios
@@ -167,8 +167,8 @@ def cargar_prestamos_y_remitos():
     prestamos = PrestamoDAO()
     remitos = RemitoDAO()
     central, norte, sur = "Biblioteca Central", "Sede Norte", "Sede Sur"
-    laura = buscar_id(Empleado, legajo="E001")
-    martin = buscar_id(Empleado, legajo="E002")
+    laura = buscar_id(Empleado, legajo="A1")
+    martin = buscar_id(Empleado, legajo="B1")
 
     # Préstamos locales: activo, vencido, solicitado (sin aprobar) y cancelado
     vencido_3_dias = aprobar(LOCAL, 1, "RAY-001", central, central)
@@ -191,21 +191,21 @@ def cargar_prestamos_y_remitos():
     aprobar(INTER, 2, "FIC-003", central, norte)
 
     # Remito EMPAQUETADO: se puede cancelar, o cancelar su préstamo desde Préstamos
-    crear_remito(norte, sur, [aprobar(INTER, 1, "ANT-001", norte, sur)], "E002")
+    crear_remito(norte, sur, [aprobar(INTER, 1, "ANT-001", norte, sur)], "B1")
 
     # Remito DESPACHADO: ya no se puede cancelar
-    remito = crear_remito(norte, central, [aprobar(INTER, 2, "REV-002", norte, central)], "E002")
+    remito = crear_remito(norte, central, [aprobar(INTER, 2, "REV-002", norte, central)], "B1")
     remitos.avanzar(remito, martin, "Sale con el transporte de la mañana")
 
     # Remito EN_TRANSITO con una demora: se puede recibir o dar por extraviado
-    remito = crear_remito(sur, central, [aprobar(INTER, 3, "MOR-002", sur, central)], "E003")
+    remito = crear_remito(sur, central, [aprobar(INTER, 3, "MOR-002", sur, central)], "B2")
     remitos.avanzar(remito, martin, "")
     remitos.avanzar(remito, martin, "")
     remitos.registrar_incidencia(remito, TipoIncidencia.DEMORA, date.today().strftime("%d/%m/%Y"),
                                  "El transporte se retrasó por lluvia")
 
     # Remito RECIBIDO: el préstamo quedó ACTIVO con el plazo interbibliotecario
-    remito = crear_remito(norte, central, [aprobar(INTER, 1, "RAY-003", norte, central)], "E002")
+    remito = crear_remito(norte, central, [aprobar(INTER, 1, "RAY-003", norte, central)], "B1")
     for _ in range(3):
         remitos.avanzar(remito, laura, "")
     # Para que el reporte de movimiento tenga un tiempo de tránsito distinto de 0:
@@ -216,11 +216,11 @@ def cargar_prestamos_y_remitos():
         recibido.fecha_despacho = date.today() - timedelta(days=3)
 
     # Remito CANCELADO: el préstamo se canceló y el ejemplar volvió a estar disponible
-    remito = crear_remito(sur, norte, [aprobar(INTER, 2, "FIC-002", sur, norte)], "E003")
+    remito = crear_remito(sur, norte, [aprobar(INTER, 2, "FIC-002", sur, norte)], "B2")
     remitos.cancelar(remito, laura, "El socio ya no lo necesita")
 
     # Remito EXTRAVIADO: ejemplar perdido e incidencia de extravío
-    remito = crear_remito(central, sur, [aprobar(INTER, 3, "ANT-002", central, sur)], "E001")
+    remito = crear_remito(central, sur, [aprobar(INTER, 3, "ANT-002", central, sur)], "A1")
     remitos.avanzar(remito, laura, "")
     remitos.avanzar(remito, laura, "")
     remitos.extraviar(remito, laura, "El paquete no llegó a destino")
@@ -245,7 +245,7 @@ def cargar_reservas_y_devoluciones():
     """Una reserva en cada estado y dos devoluciones (con multa y con remito)."""
     reservas = ReservaDAO()
     hoy = date.today().strftime("%d/%m/%Y")
-    laura = buscar_id(Empleado, legajo="E001")
+    laura = buscar_id(Empleado, legajo="A1")
     central, norte, sur = "Biblioteca Central", "Sede Norte", "Sede Sur"
 
     # PENDIENTE: el único ejemplar de Norte (ANT-001) está apartado para un envío

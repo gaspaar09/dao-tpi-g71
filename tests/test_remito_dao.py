@@ -24,9 +24,9 @@ def preparar():
     """Lo de los tests de préstamos, más un empleado, un segundo ejemplar en
     Central y una tercera sede (Sur)."""
     ids = preparar_prestamos()
-    SedeDAO().crear("Sur", "Calle 3", "54", "3514000002", "", DiaSemana.LUNES, "08:00", "18:00")
+    SedeDAO().crear("Sur", "Calle 3", "54", "3514000002", "", [(DiaSemana.LUNES, "08:00", "18:00")])
     ids['sur'] = id_por_texto(SedeDAO().opciones(), "Sur")
-    EmpleadoDAO().crear("E001", "Laura", RolEmpleado.BIBLIOTECARIO, ids['central'])
+    EmpleadoDAO().crear("Laura", RolEmpleado.BIBLIOTECARIO, ids['central'])
     ids['empleado'] = EmpleadoDAO().opciones()[0][0]
     EjemplarDAO().crear("EJ-002", LibroDAO().opciones()[0][0], ids['central'], EstadoFisico.BUENO)
     ids['ejemplares'] = sorted([fila['id'] for fila in EjemplarDAO().listar()])
@@ -138,7 +138,7 @@ class TestCicloDeIda:
         assert [m['estado_nuevo'] for m in movimientos] == [
             EstadoRemito.EMPAQUETADO, EstadoRemito.DESPACHADO, EstadoRemito.EN_TRANSITO, EstadoRemito.RECIBIDO]
         assert movimientos[2]['observacion'] == "En camino"
-        assert movimientos[1]['empleado'] == "Laura (Legajo E001)"
+        assert movimientos[1]['empleado'] == "Laura (Legajo B1)"
 
     def test_un_remito_recibido_no_avanza(self):
         ids = preparar()

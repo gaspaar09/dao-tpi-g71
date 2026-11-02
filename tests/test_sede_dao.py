@@ -11,19 +11,20 @@ from modelos.reserva import Reserva
 from tests.auxiliares import preparar_base_en_memoria, crear_socio
 
 dao = SedeDAO()
+SEMANA = [(DiaSemana.LUNES, "08:00", "18:00")]
 
 
 def crear_sede(nombre="Central"):
     """Crea una sede válida y devuelve su id."""
     dao.crear(nombre, "Avenida Colón 1200", "54", "3514210000", "central@biblio.org",
-              DiaSemana.LUNES, "08:00", "18:00")
+              [(DiaSemana.LUNES, "08:00", "18:00")])
     for sede in dao.listar():
         if sede['nombre'] == nombre:
             return sede['id']
 
 
 class TestAltaSede:
-    def test_alta_con_su_primer_horario(self):
+    def test_alta_con_su_horario(self):
         preparar_base_en_memoria()
         sede_id = crear_sede()
         sede = dao.listar()[0]
@@ -34,21 +35,22 @@ class TestAltaSede:
 
     def test_email_opcional(self):
         preparar_base_en_memoria()
-        dao.crear("Norte", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00")
+        dao.crear("Norte", "Calle 1", "54", "3514000000", "", [(DiaSemana.LUNES, "08:00", "18:00")])
         assert dao.listar()[0]['email'] == ""
 
     def test_datos_invalidos(self):
         preparar_base_en_memoria()
         casos = [
-            ("", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00"),
-            ("12345", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00"),
-            ("Norte", "", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00"),
-            ("Norte", "1234", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00"),
-            ("Norte", "Calle 1", "54", "tel-abc", "", DiaSemana.LUNES, "08:00", "18:00"),
-            ("Norte", "Calle 1", "54", "3514000000", "sin-arroba", DiaSemana.LUNES, "08:00", "18:00"),
-            ("Norte", "Calle 1", "54", "3514000000", "", "FERIADO", "08:00", "18:00"),
-            ("Norte", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "25:00", "18:00"),
-            ("Norte", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "18:00", "08:00"),
+            ("", "Calle 1", "54", "3514000000", "", [(DiaSemana.LUNES, "08:00", "18:00")]),
+            ("Norte", "Calle 1", "54", "3514000000", "", []),
+            ("12345", "Calle 1", "54", "3514000000", "", [(DiaSemana.LUNES, "08:00", "18:00")]),
+            ("Norte", "", "54", "3514000000", "", [(DiaSemana.LUNES, "08:00", "18:00")]),
+            ("Norte", "1234", "54", "3514000000", "", [(DiaSemana.LUNES, "08:00", "18:00")]),
+            ("Norte", "Calle 1", "54", "tel-abc", "", [(DiaSemana.LUNES, "08:00", "18:00")]),
+            ("Norte", "Calle 1", "54", "3514000000", "sin-arroba", [(DiaSemana.LUNES, "08:00", "18:00")]),
+            ("Norte", "Calle 1", "54", "3514000000", "", [("FERIADO", "08:00", "18:00")]),
+            ("Norte", "Calle 1", "54", "3514000000", "", [(DiaSemana.LUNES, "25:00", "18:00")]),
+            ("Norte", "Calle 1", "54", "3514000000", "", [(DiaSemana.LUNES, "18:00", "08:00")]),
         ]
         for caso in casos:
             with pytest.raises(ValidacionError):
@@ -73,7 +75,7 @@ class TestModificarSede:
     def test_modificar_sin_chocar_consigo_misma(self):
         preparar_base_en_memoria()
         sede_id = crear_sede("Central")
-        dao.modificar(sede_id, "central", "Otra dirección 50", "54", "3514999999", "")
+        dao.modificar(sede_id, "central", "Otra dirección 50", "54", "3514999999", "", SEMANA)
         sede = dao.listar()[0]
         assert sede['nombre'] == "Central"  # se guarda capitalizado
         assert sede['direccion'] == "Otra dirección 50"
@@ -83,38 +85,50 @@ class TestModificarSede:
         crear_sede("Central")
         norte_id = crear_sede("Norte")
         with pytest.raises(ReglaNegocioError, match="Ya existe una sede"):
-            dao.modificar(norte_id, "CENTRAL", "Calle 1", "54", "3514000000", "")
+            dao.modificar(norte_id, "CENTRAL", "Calle 1", "54", "3514000000", "", SEMANA)
 
     def test_sede_inexistente(self):
         preparar_base_en_memoria()
         with pytest.raises(ReglaNegocioError, match="No se encontró"):
-            dao.modificar(99, "Norte", "Calle 1", "54", "3514000000", "")
+            dao.modificar(99, "Norte", "Calle 1", "54", "3514000000", "", SEMANA)
         with pytest.raises(ValidacionError, match="Seleccione"):
-            dao.modificar(None, "Norte", "Calle 1", "54", "3514000000", "")
+            dao.modificar(None, "Norte", "Calle 1", "54", "3514000000", "", SEMANA)
 
 
 class TestHorarios:
-    def test_agregar_y_quitar(self):
+    def test_varios_dias_cada_uno_con_su_horario(self):
         preparar_base_en_memoria()
-        sede_id = crear_sede()
-        dao.agregar_horario(sede_id, DiaSemana.MARTES, "09:00", "13:00")
-        horarios = dao.listar_horarios(sede_id)
-        assert [h['dia'] for h in horarios] == [DiaSemana.LUNES, DiaSemana.MARTES]
-        dao.quitar_horario(horarios[0]['id'])
-        assert [h['dia'] for h in dao.listar_horarios(sede_id)] == [DiaSemana.MARTES]
+        semana = [(DiaSemana.SABADO, "09:00", "13:00"), (DiaSemana.LUNES, "08:00", "18:00"),
+                  (DiaSemana.MIERCOLES, "08:00", "20:30")]
+        dao.crear("Norte", "Calle 1", "54", "3514000000", "", semana)
+        sede_id = dao.listar()[0]['id']
+        horarios = [(h['dia'], h['apertura'], h['cierre']) for h in dao.listar_horarios(sede_id)]
+        # Se listan ordenados por día de la semana
+        assert horarios == [(DiaSemana.LUNES, "08:00", "18:00"), (DiaSemana.MIERCOLES, "08:00", "20:30"),
+                            (DiaSemana.SABADO, "09:00", "13:00")]
 
-    def test_dia_repetido(self):
+    def test_modificar_reemplaza_la_semana(self):
         preparar_base_en_memoria()
         sede_id = crear_sede()
-        with pytest.raises(ReglaNegocioError, match="ya tiene un horario"):
-            dao.agregar_horario(sede_id, DiaSemana.LUNES, "09:00", "13:00")
+        dao.modificar(sede_id, "Central", "Calle 1", "54", "3514000000", "",
+                      [(DiaSemana.MARTES, "09:00", "13:00"), (DiaSemana.JUEVES, "10:00", "14:00")])
+        assert [h['dia'] for h in dao.listar_horarios(sede_id)] == [DiaSemana.MARTES, DiaSemana.JUEVES]
 
-    def test_no_se_quita_el_ultimo_horario(self):
+    def test_semana_invalida(self):
         preparar_base_en_memoria()
         sede_id = crear_sede()
-        horario_id = dao.listar_horarios(sede_id)[0]['id']
-        with pytest.raises(ReglaNegocioError, match="al menos un horario"):
-            dao.quitar_horario(horario_id)
+        casos = {
+            "al menos un día": [],
+            "repetido": [(DiaSemana.LUNES, "08:00", "18:00"), (DiaSemana.LUNES, "09:00", "12:00")],
+            "MARTES: La hora de apertura debe ser anterior": [(DiaSemana.LUNES, "08:00", "18:00"),
+                                                              (DiaSemana.MARTES, "18:00", "08:00")],
+            "Elija la hora de apertura y la de cierre del MARTES": [(DiaSemana.MARTES, "", "18:00")],
+        }
+        for mensaje, semana in casos.items():
+            with pytest.raises(ValidacionError, match=mensaje):
+                dao.modificar(sede_id, "Central", "Calle 1", "54", "3514000000", "", semana)
+        # La semana anterior queda como estaba
+        assert [h['dia'] for h in dao.listar_horarios(sede_id)] == [DiaSemana.LUNES]
 
 
 class TestBajaSede:

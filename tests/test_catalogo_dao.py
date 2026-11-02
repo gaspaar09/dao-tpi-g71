@@ -139,7 +139,7 @@ class TestLibros:
     def test_no_se_elimina_con_ejemplares(self):
         categoria_id, autor_id = preparar_catalogo()
         libro_id = crear_libro(categoria_id, autor_id)
-        SedeDAO().crear("Central", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00")
+        SedeDAO().crear("Central", "Calle 1", "54", "3514000000", "", [(DiaSemana.LUNES, "08:00", "18:00")])
         EjemplarDAO().crear("EJ-001", libro_id, SedeDAO().opciones()[0][0], EstadoFisico.NUEVO)
         with pytest.raises(ReglaNegocioError, match="tiene ejemplares"):
             libro_dao.eliminar(libro_id)

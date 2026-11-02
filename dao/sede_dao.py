@@ -4,7 +4,7 @@ from config import LARGO_NOMBRE_SEDE, LARGO_DIRECCION
 from constantes import DiaSemana, EstadoPrestamo, EstadoRemito, EstadoReserva, EstadoSede
 from dao.comun import buscar_por_id
 from database import obtener_session
-from excepciones import ReglaNegocioError
+from excepciones import ReglaNegocioError, ValidacionError
 from modelos.sede import Sede, HorarioSede
 from modelos.prestamo import Prestamo
 from modelos.remito import Remito
@@ -31,10 +31,29 @@ def validar_datos_sede(nombre, direccion, prefijo, telefono, email):
 
 def validar_datos_horario(dia, apertura, cierre):
     dia = validar_opcion(dia, DiaSemana.TODOS, "día")
-    apertura = validar_hora(apertura, "hora de apertura")
-    cierre = validar_hora(cierre, "hora de cierre")
-    validar_rango_horario(apertura, cierre)
+    if not apertura or not cierre:
+        raise ValidacionError(f"Elija la hora de apertura y la de cierre del {dia}")
+    apertura = validar_hora(apertura, f"hora de apertura del {dia}")
+    cierre = validar_hora(cierre, f"hora de cierre del {dia}")
+    validar_rango_horario(apertura, cierre, dia)
     return dia, apertura, cierre
+
+
+def validar_horarios(horarios):
+    """horarios es la semana de la sede: [(día, apertura, cierre)], uno por
+    cada día que abre, cada uno con su propio horario. Mínimo un día y sin
+    repetir días. Devuelve la lista validada (con objetos time)."""
+    if not horarios:
+        raise ValidacionError("Marque al menos un día de apertura")
+    validados = []
+    dias = []
+    for dia, apertura, cierre in horarios:
+        dia, apertura, cierre = validar_datos_horario(dia, apertura, cierre)
+        if dia in dias:
+            raise ValidacionError(f"El día {dia} está repetido")
+        dias.append(dia)
+        validados.append((dia, apertura, cierre))
+    return validados
 
 
 class SedeDAO:
@@ -46,21 +65,29 @@ class SedeDAO:
             if sede.nombre.lower() == nombre.lower() and sede.id != id_actual:
                 raise ReglaNegocioError(f"Ya existe una sede llamada {sede.nombre}")
 
-    def crear(self, nombre, direccion, prefijo, telefono, email, dia, apertura, cierre):
-        """Da de alta una sede junto con su primer horario (mínimo uno)."""
+    def poner_horarios(self, sede, horarios):
+        """Reemplaza la semana de la sede. Por la composición (cascade
+        delete-orphan), los horarios que salen de la lista se borran."""
+        sede.horarios = [HorarioSede(dia_semana=dia, hora_apertura=apertura, hora_cierre=cierre)
+                         for dia, apertura, cierre in horarios]
+
+    def crear(self, nombre, direccion, prefijo, telefono, email, horarios):
+        """Da de alta una sede con sus días y horarios de apertura (mínimo uno)."""
         datos = validar_datos_sede(nombre, direccion, prefijo, telefono, email)
         nombre, direccion, prefijo, telefono, email = datos
-        dia, apertura, cierre = validar_datos_horario(dia, apertura, cierre)
+        horarios = validar_horarios(horarios)
         with obtener_session() as session:
             self.verificar_nombre_unico(session, nombre)
             sede = Sede(nombre=nombre, direccion=direccion, prefijo_pais=prefijo, telefono=telefono, email=email,
                         estado=EstadoSede.ACTIVA)
-            sede.horarios.append(HorarioSede(dia_semana=dia, hora_apertura=apertura, hora_cierre=cierre))
+            self.poner_horarios(sede, horarios)
             session.add(sede)
 
-    def modificar(self, id, nombre, direccion, prefijo, telefono, email):
+    def modificar(self, id, nombre, direccion, prefijo, telefono, email, horarios):
+        """Modifica los datos de la sede y reemplaza su semana de horarios."""
         datos = validar_datos_sede(nombre, direccion, prefijo, telefono, email)
         nombre, direccion, prefijo, telefono, email = datos
+        horarios = validar_horarios(horarios)
         with obtener_session() as session:
             sede = buscar_por_id(session, Sede, id, "la sede")
             self.verificar_nombre_unico(session, nombre, id_actual=sede.id)
@@ -69,22 +96,7 @@ class SedeDAO:
             sede.prefijo_pais = prefijo
             sede.telefono = telefono
             sede.email = email
-
-    def agregar_horario(self, sede_id, dia, apertura, cierre):
-        dia, apertura, cierre = validar_datos_horario(dia, apertura, cierre)
-        with obtener_session() as session:
-            sede = buscar_por_id(session, Sede, sede_id, "la sede")
-            for horario in sede.horarios:
-                if horario.dia_semana == dia:
-                    raise ReglaNegocioError(f"La sede ya tiene un horario para el día {dia}")
-            sede.horarios.append(HorarioSede(dia_semana=dia, hora_apertura=apertura, hora_cierre=cierre))
-
-    def quitar_horario(self, horario_id):
-        with obtener_session() as session:
-            horario = buscar_por_id(session, HorarioSede, horario_id, "el horario")
-            if len(horario.sede.horarios) == 1:
-                raise ReglaNegocioError("La sede debe tener al menos un horario")
-            session.delete(horario)
+            self.poner_horarios(sede, horarios)
 
     def dar_de_baja(self, id):
         """Baja lógica. No se permite con operaciones en curso (supuesto del grupo)."""

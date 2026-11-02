@@ -9,7 +9,7 @@ from modelos.remito import Remito, ItemRemito
 from patrones.estado_remito import ESTADOS_REMITO, EstadoRemitoBase
 from tests.auxiliares import crear_ejemplar, crear_prestamo, crear_sede
 
-EMPLEADO = Empleado(legajo="E001", nombre="Laura", rol="BIBLIOTECARIO")
+EMPLEADO = Empleado(legajo="B1", nombre="Laura", rol="BIBLIOTECARIO")
 
 # Tabla de CLAUDE.md: (estado, acción) -> estado al que pasa. Lo que no
 # figura acá tiene que lanzar TransicionInvalidaError.

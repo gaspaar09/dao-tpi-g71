@@ -160,7 +160,9 @@ Constantes de texto + un diccionario de transiciones permitidas validado en `Pre
 - No prestar un ejemplar cuya sede no sea la `sede_origen` del préstamo.
 - No iniciar préstamos, reservas ni envíos desde o hacia una sede dada de BAJA.
 - Préstamo LOCAL: `sede_origen == sede_destino`. INTERBIBLIOTECARIO: `sede_origen != sede_destino`.
-- Evitar duplicados: socios (DNI y `nro_socio`), catálogo (ISBN o ISSN) y ejemplares (`codigo_inventario`).
+- Evitar duplicados: socios (DNI), catálogo (ISBN o ISSN) y ejemplares (`codigo_inventario`).
+- **Identificadores que asigna el sistema (decisión del grupo):** `nro_socio` = el más alto + 1; `legajo` = letra del rol (`B` bibliotecario, `A` administrador, en `RolEmpleado.PREFIJO_LEGAJO`) + número correlativo, y un cambio de rol le da un legajo nuevo; `nro_remito` = `REM-` + número. Los `id` los autoincrementa SQLite. `isbn` y `codigo_inventario` siguen manuales.
+- **Horarios de la sede:** se carga la semana completa (días marcados, cada uno con su horario, desde desplegables cada 30 minutos); `SedeDAO.crear/modificar` reciben `[(día, apertura, cierre)]` y modificar reemplaza la semana.
 - `codigo_inventario` lo ingresa el personal (es el código impreso del ejemplar), es obligatorio y único: es lo que permite detectar la carga doble de un mismo ejemplar físico. El proceso opcional de inventario (escaneo, auditorías) queda fuera de alcance. El campo `isbn` acepta ISBN (10 o 13) e ISSN (8), porque el catálogo incluye revistas y material de consulta.
 - Trazabilidad del remito: cada cambio de estado deja un `MovimientoRemito`; las transiciones no permitidas se rechazan. Un remito puede agrupar varios ejemplares entre el mismo par de sedes.
 - Reserva sobre un título y una sede de retiro; cuando queda un ejemplar disponible se asigna (ejemplar RESERVADO, reserva DISPONIBLE). Estados: PENDIENTE → DISPONIBLE → CUMPLIDA / CANCELADA / VENCIDA.

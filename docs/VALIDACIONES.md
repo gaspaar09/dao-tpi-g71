@@ -47,15 +47,15 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 | baja | No permitir con préstamos activos, remitos en curso o reservas pendientes *(supuesto)* |
 | volver a dar de alta | Solo una sede dada de baja; vuelve a ACTIVA con sus horarios, empleados y ejemplares |
 
-**HorarioSede:** mínimo un horario por sede; día entre lunes y domingo y sin repetirse en la misma sede; formato `HH:MM` (`time(hora, minuto)`); `hora_apertura < hora_cierre`.
+**HorarioSede:** la sede se carga con su semana: se marcan los días que abre (mínimo uno) y cada día tiene su propio horario; el día no se repite en la misma sede. Apertura y cierre se eligen de desplegables cada 30 minutos (06:00 a 23:30), que solo ofrecen horas coherentes (el cierre, posteriores a la apertura, y viceversa); el DAO igual valida formato `HH:MM` (`time(hora, minuto)`) y `hora_apertura < hora_cierre` por día. Al modificar la sede se reemplaza la semana completa.
 
 ### Empleado
-`legajo` obligatorio, único, letras y dígitos, hasta 20. `nombre` obligatorio, solo letras, 2–80. `rol` ∈ `RolEmpleado`. `sede_id` obligatorio: la sede debe existir y estar ACTIVA al dar de alta. En un `MovimientoRemito` no se exige que el empleado pertenezca a la sede del remito; solo se guarda su sede.
+`legajo` lo asigna el sistema según el rol: `B` + número para BIBLIOTECARIO y `A` + número para ADMINISTRADOR, correlativo al último de esa letra (B1, B2…). Si al modificar cambia el rol, recibe un legajo nuevo con la otra letra. `nombre` obligatorio, solo letras, 2–80. `rol` ∈ `RolEmpleado`. `sede_id` obligatorio: la sede debe existir y estar ACTIVA al dar de alta. En un `MovimientoRemito` no se exige que el empleado pertenezca a la sede del remito; solo se guarda su sede.
 
 ### Socio
 | Campo | Regla |
 |---|---|
-| nro_socio | Entero > 0, único |
+| nro_socio | Lo asigna el sistema al dar de alta: el más alto registrado + 1; no se modifica |
 | dni | Entre 1.000.000 y 99.999.999, sin 0 adelante; se admiten puntos solo bien ubicados (la UI los pone sola al tipear); se guardan solo los dígitos; único |
 | nombre, apellido | Solo letras, espacios, tildes, apóstrofo y guion; 2–50 |
 | email | Opcional; si se carga, formato válido, hasta 100 |

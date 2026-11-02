@@ -61,40 +61,42 @@ def rechaza_cada_valor(operacion, valida, campos):
 class TestAltasConDatosInvalidos:
     def test_sede(self):
         preparar()
-        valida = ["Sede Oeste", "Calle 1", "54", "3514000099", "o@b.org", "LUNES", "08:00", "18:00"]
+        valida = ["Sede Oeste", "Calle 1", "54", "3514000099", "o@b.org", [("LUNES", "08:00", "18:00")]]
         rechaza_cada_valor(SedeDAO().crear, valida, {
             0: TEXTOS + ["7", "77", "Sede #7", "Biblioteca central"],  # el último, duplicado
             1: TEXTOS + ["Av. Colón 1200", "1234"],
             2: TEXTOS + ["999", "+54"],
             3: NUMEROS + ["351 400", "(351)4000000"],
             4: ["x" * 400 + "@b.org", "a@", "@b.c", "a b@c.d", "sin arroba"],
-            5: TEXTOS + ["FERIADO"],
-            6: ["25:00", "8", "08:60", "abc", ""],
-            7: ["07:00", "08:00", "abc"],  # cierre antes o igual que la apertura
+            5: [[],  # ningún día de apertura
+                [("FERIADO", "08:00", "18:00")], [("", "08:00", "18:00")], [(None, "08:00", "18:00")],
+                [("LUNES", "25:00", "18:00")], [("LUNES", "8", "18:00")], [("LUNES", "08:60", "18:00")],
+                [("LUNES", "", "18:00")], [("LUNES", "08:00", "abc")],
+                [("LUNES", "08:00", "07:00")], [("LUNES", "08:00", "08:00")],  # cierre antes o igual
+                [("LUNES", "08:00", "18:00"), ("LUNES", "09:00", "12:00")],  # día repetido
+                [("LUNES", "08:00", "18:00"), ("MARTES", "18:00", "08:00")]],  # un solo día mal
         })
         assert len(SedeDAO().listar()) == 3
 
     def test_empleado(self):
         preparar()
-        valida = ["E099", "Pedro Gil", "BIBLIOTECARIO", id_sede("Biblioteca Central")]
+        valida = ["Pedro Gil", "BIBLIOTECARIO", id_sede("Biblioteca Central")]
         rechaza_cada_valor(EmpleadoDAO().crear, valida, {
-            0: TEXTOS + ["E-1", "E001"],  # el último, duplicado
-            1: TEXTOS + ["Pedro2", "P"],
-            2: TEXTOS + ["GERENTE"],
-            3: IDS,
+            0: TEXTOS + ["Pedro2", "P"],
+            1: TEXTOS + ["GERENTE"],
+            2: IDS,
         })
 
     def test_socio(self):
         preparar()
-        valida = ["99", "40111222", "Luis", "Paz", "", "54", "3515550099"]
+        valida = ["40111222", "Luis", "Paz", "", "54", "3515550099"]
         rechaza_cada_valor(SocioDAO().crear, valida, {
-            0: NUMEROS + ["1"],  # nro de socio repetido
-            1: NUMEROS + ["1.000000", "00000005", "123456789", "999999", "30.111.222"],  # el último, repetido
-            2: TEXTOS + ["Luis3", "L"],
-            3: TEXTOS + ["<script>"],
-            4: ["x" * 400, "a@", "sin arroba"],
-            5: TEXTOS + ["999"],
-            6: NUMEROS[6:] + TEXTOS + ["12345", "1234567890123456", "351-555"],
+            0: NUMEROS + ["1.000000", "00000005", "123456789", "999999", "30.111.222"],  # el último, repetido
+            1: TEXTOS + ["Luis3", "L"],
+            2: TEXTOS + ["<script>"],
+            3: ["x" * 400, "a@", "sin arroba"],
+            4: TEXTOS + ["999"],
+            5: NUMEROS[6:] + TEXTOS + ["12345", "1234567890123456", "351-555"],
         })
         assert len(SocioDAO().listar()) == 4
 
@@ -166,7 +168,7 @@ class TestIdsInexistentes:
     def test_acciones_sobre_algo_que_no_existe(self):
         """Por ejemplo, un registro que se eliminó mientras otra pestaña lo mostraba."""
         preparar()
-        acciones = [SedeDAO().dar_de_baja, SedeDAO().reactivar, SedeDAO().quitar_horario,
+        acciones = [SedeDAO().dar_de_baja, SedeDAO().reactivar,
                     SocioDAO().inhabilitar, SocioDAO().habilitar, SocioDAO().dar_de_baja,
                     EmpleadoDAO().eliminar, AutorDAO().eliminar, CategoriaDAO().eliminar, LibroDAO().eliminar,
                     EjemplarDAO().dar_de_baja, PrestamoDAO().aprobar, PrestamoDAO().cancelar,

@@ -21,7 +21,7 @@ prestamos = PrestamoDAO()
 def preparar():
     """Sedes Central y Norte, un ejemplar (EJ-001) en Central y dos socios."""
     ids = preparar_prestamos()
-    SocioDAO().crear("2", "30111333", "Bruno", "Paz", "", "54", "3515550002")
+    SocioDAO().crear("30111333", "Bruno", "Paz", "", "54", "3515550002")
     ids['socios'] = [id for id, texto in SocioDAO().opciones()]
     ids['libro'] = LibroDAO().opciones()[0][0]
     return ids

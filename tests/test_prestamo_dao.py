@@ -30,9 +30,9 @@ def preparar():
     """Dos sedes, un socio y un ejemplar en Central. Devuelve un diccionario de ids."""
     preparar_base_en_memoria()
     sedes = SedeDAO()
-    sedes.crear("Central", "Calle 1", "54", "3514000000", "", DiaSemana.LUNES, "08:00", "18:00")
-    sedes.crear("Norte", "Calle 2", "54", "3514000001", "", DiaSemana.LUNES, "08:00", "18:00")
-    SocioDAO().crear("1", "30111222", "Ana", "Martínez", "", "54", "3515550001")
+    sedes.crear("Central", "Calle 1", "54", "3514000000", "", [(DiaSemana.LUNES, "08:00", "18:00")])
+    sedes.crear("Norte", "Calle 2", "54", "3514000001", "", [(DiaSemana.LUNES, "08:00", "18:00")])
+    SocioDAO().crear("30111222", "Ana", "Martínez", "", "54", "3515550001")
     CategoriaDAO().crear("Novela")
     AutorDAO().crear("Julio", "Cortázar")
     LibroDAO().crear("9789500700011", "Rayuela", "Sudamericana", "1963", "Español", TipoMaterial.LIBRO,
@@ -119,7 +119,7 @@ class TestAprobacion:
         """Dos socios pueden pedir el mismo ejemplar: se lo lleva la primera que se aprueba."""
         ids = preparar()
         primero = solicitar(ids)
-        SocioDAO().crear("2", "30111333", "Bruno", "Paz", "", "54", "3515550002")
+        SocioDAO().crear("30111333", "Bruno", "Paz", "", "54", "3515550002")
         otro_socio = [id for id, texto in SocioDAO().opciones() if id != ids['socio']][0]
         dao.solicitar(LOCAL, otro_socio, ids['ejemplar'], ids['central'], None)
         segundo = dao.listar()[0]['id']

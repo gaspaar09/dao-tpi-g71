@@ -1,16 +1,17 @@
 """Pestaña de Socios: alta, modificación, inhabilitación y baja."""
 
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 from config import LARGO_NOMBRE_PERSONA
 from constantes import PaisTelefono
 from dao.socio_dao import SocioDAO
 from ui.base import PestaniaBase
-from validadores import (validar_nro_socio, validar_dni, formatear_dni, solo_digitos, validar_solo_letras,
+from validadores import (validar_dni, formatear_dni, solo_digitos, validar_solo_letras,
                          validar_email, validar_telefono)
 
-CAMPOS = ['nro_socio', 'dni', 'nombre', 'apellido', 'email', 'prefijo', 'telefono']
+# El número de socio no se carga: lo asigna el sistema al dar de alta
+CAMPOS = ['dni', 'nombre', 'apellido', 'email', 'prefijo', 'telefono']
 
 
 class PestaniaSocios(PestaniaBase):
@@ -21,22 +22,21 @@ class PestaniaSocios(PestaniaBase):
 
         formulario = ttk.Frame(self)
         formulario.pack(fill="x")
-        self.crear_campo(formulario, 'nro_socio', "Número de socio:", 0, validar_nro_socio, numerico=True)
-        entry_dni = self.crear_campo(formulario, 'dni', "DNI:", 1, validar_dni)
+        entry_dni = self.crear_campo(formulario, 'dni', "DNI:", 0, validar_dni)
         # En vivo: solo dígitos (los puntos los pone el sistema) y como máximo 8
         vcmd = self.register(self.dni_permitido)
         entry_dni.config(validate="key", validatecommand=(vcmd, "%P"))
         # Al soltar cada tecla se reacomodan los puntos de miles
         entry_dni.bind("<KeyRelease>", lambda evento: self.poner_puntos_dni())
-        self.crear_campo(formulario, 'nombre', "Nombre:", 2,
+        self.crear_campo(formulario, 'nombre', "Nombre:", 1,
                          lambda v: validar_solo_letras(v, "nombre", 2, LARGO_NOMBRE_PERSONA))
-        self.crear_campo(formulario, 'apellido', "Apellido:", 3,
+        self.crear_campo(formulario, 'apellido', "Apellido:", 2,
                          lambda v: validar_solo_letras(v, "apellido", 2, LARGO_NOMBRE_PERSONA))
-        self.crear_campo(formulario, 'email', "Email (opcional):", 4, lambda v: validar_email(v, obligatorio=False))
+        self.crear_campo(formulario, 'email', "Email (opcional):", 3, lambda v: validar_email(v, obligatorio=False))
         # El código de país no se escribe: se elige el país y el número va sin "+"
-        self.crear_combo(formulario, 'prefijo', "País (teléfono):", 5,
+        self.crear_combo(formulario, 'prefijo', "País (teléfono):", 4,
                          lambda: [(codigo, f"{pais} (+{codigo})") for pais, codigo in PaisTelefono.PAISES])
-        self.crear_campo(formulario, 'telefono', "Teléfono (solo números):", 6, validar_telefono, numerico=True)
+        self.crear_campo(formulario, 'telefono', "Teléfono (solo números):", 5, validar_telefono, numerico=True)
 
         self.crear_botones(self, [("Inhabilitar", self.inhabilitar), ("Habilitar", self.habilitar),
                                   ("Dar de baja", self.dar_de_baja)]).pack(anchor="w", pady=10)
@@ -66,7 +66,14 @@ class PestaniaSocios(PestaniaBase):
         return CAMPOS
 
     def crear(self):
-        self.dao.crear(*[self.valor(nombre) for nombre in CAMPOS])
+        self.nro_asignado = self.dao.crear(*[self.valor(nombre) for nombre in CAMPOS])
+
+    def guardar(self):
+        """Como el número lo pone el sistema, después del alta se informa cuál quedó."""
+        self.nro_asignado = None
+        super().guardar()
+        if self.nro_asignado is not None:
+            messagebox.showinfo("Número de socio", f"Se asignó el número de socio {self.nro_asignado}")
 
     def modificar(self, id):
         self.dao.modificar(id, *[self.valor(nombre) for nombre in CAMPOS])

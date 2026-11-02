@@ -6,51 +6,56 @@ from dao.comun import buscar_por_id
 from database import obtener_session
 from excepciones import ReglaNegocioError
 from modelos.socio import Socio
-from validadores import (validar_nro_socio, validar_dni, formatear_dni, validar_solo_letras,
+from validadores import (validar_dni, formatear_dni, validar_solo_letras,
                          validar_email, validar_prefijo_pais, validar_telefono)
 
 PRESTAMOS_EN_CURSO = [EstadoPrestamo.SOLICITADO, EstadoPrestamo.APROBADO,
                       EstadoPrestamo.EN_ENVIO, EstadoPrestamo.ACTIVO]
 
 
-def validar_datos_socio(nro_socio, dni, nombre, apellido, email, prefijo, telefono):
-    nro_socio = validar_nro_socio(nro_socio)
+def validar_datos_socio(dni, nombre, apellido, email, prefijo, telefono):
     dni = validar_dni(dni)
     nombre = validar_solo_letras(nombre, "nombre", 2, LARGO_NOMBRE_PERSONA)
     apellido = validar_solo_letras(apellido, "apellido", 2, LARGO_NOMBRE_PERSONA)
     email = validar_email(email, obligatorio=False)
     prefijo = validar_prefijo_pais(prefijo)
     telefono = validar_telefono(telefono)
-    return nro_socio, dni, nombre, apellido, email, prefijo, telefono
+    return dni, nombre, apellido, email, prefijo, telefono
 
 
 class SocioDAO:
     """Operaciones de acceso a datos sobre socios."""
 
-    def verificar_duplicados(self, session, nro_socio, dni, id_actual=None):
-        socio = session.query(Socio).filter_by(nro_socio=nro_socio).first()
-        if socio is not None and socio.id != id_actual:
-            raise ReglaNegocioError(f"Ya existe un socio con el número {nro_socio}")
+    def verificar_dni_unico(self, session, dni, id_actual=None):
         socio = session.query(Socio).filter_by(dni=dni).first()
         if socio is not None and socio.id != id_actual:
             raise ReglaNegocioError(f"Ya existe un socio con el DNI {dni}")
 
-    def crear(self, nro_socio, dni, nombre, apellido, email, prefijo, telefono):
-        datos = validar_datos_socio(nro_socio, dni, nombre, apellido, email, prefijo, telefono)
-        nro_socio, dni, nombre, apellido, email, prefijo, telefono = datos
+    def siguiente_nro_socio(self, session):
+        """El número de socio lo asigna el sistema: el último registrado + 1.
+        Se usa el máximo y no la cantidad, así no se repite aunque falte alguno."""
+        numeros = [socio.nro_socio for socio in session.query(Socio).all()]
+        return max(numeros, default=0) + 1
+
+    def crear(self, dni, nombre, apellido, email, prefijo, telefono):
+        """Da de alta el socio y devuelve el número de socio asignado."""
+        dni, nombre, apellido, email, prefijo, telefono = validar_datos_socio(dni, nombre, apellido, email,
+                                                                              prefijo, telefono)
         with obtener_session() as session:
-            self.verificar_duplicados(session, nro_socio, dni)
+            self.verificar_dni_unico(session, dni)
+            nro_socio = self.siguiente_nro_socio(session)
             session.add(Socio(nro_socio=nro_socio, dni=dni, nombre=nombre, apellido=apellido,
                               email=email, prefijo_pais=prefijo, telefono=telefono,
                               estado=EstadoSocio.ACTIVO))
+            return nro_socio
 
-    def modificar(self, id, nro_socio, dni, nombre, apellido, email, prefijo, telefono):
-        datos = validar_datos_socio(nro_socio, dni, nombre, apellido, email, prefijo, telefono)
-        nro_socio, dni, nombre, apellido, email, prefijo, telefono = datos
+    def modificar(self, id, dni, nombre, apellido, email, prefijo, telefono):
+        """El número de socio no se modifica: lo asignó el sistema en el alta."""
+        dni, nombre, apellido, email, prefijo, telefono = validar_datos_socio(dni, nombre, apellido, email,
+                                                                              prefijo, telefono)
         with obtener_session() as session:
             socio = buscar_por_id(session, Socio, id, "el socio")
-            self.verificar_duplicados(session, nro_socio, dni, id_actual=socio.id)
-            socio.nro_socio = nro_socio
+            self.verificar_dni_unico(session, dni, id_actual=socio.id)
             socio.dni = dni
             socio.nombre = nombre
             socio.apellido = apellido

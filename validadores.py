@@ -10,7 +10,7 @@ Sin expresiones regulares: solo métodos de str, int(), float() y date().
 
 from datetime import date, time
 
-from config import (LARGO_EMAIL, LARGO_TELEFONO, LARGO_LEGAJO, LARGO_CODIGO_INVENTARIO, MAXIMO_ENTERO,
+from config import (LARGO_EMAIL, LARGO_TELEFONO, LARGO_CODIGO_INVENTARIO, MAXIMO_ENTERO,
                     ANIO_MINIMO_EDICION, DNI_MINIMO, DNI_MAXIMO)
 from constantes import PaisTelefono
 from excepciones import ValidacionError
@@ -139,10 +139,6 @@ def validar_numero_no_negativo(valor, campo):
     return round(numero, 2)
 
 
-def validar_nro_socio(valor):
-    return validar_entero(valor, "número de socio", 1)
-
-
 def validar_anio_edicion(valor):
     return validar_entero(valor, "año de edición", ANIO_MINIMO_EDICION, date.today().year)
 
@@ -242,14 +238,6 @@ def validar_codigo_inventario(valor):
     return codigo
 
 
-def validar_legajo(valor):
-    legajo = validar_texto(valor, "legajo", LARGO_LEGAJO).upper()
-    for caracter in legajo:
-        if caracter not in LETRAS_MAYUSCULAS + DIGITOS:
-            raise ValidacionError("El legajo solo puede tener letras y números")
-    return legajo
-
-
 # ------------------------------------------------------- fechas y horas
 
 def validar_fecha(valor, campo):
@@ -287,9 +275,11 @@ def validar_hora(valor, campo):
         raise ValidacionError(f"El campo {campo} no es una hora válida")
 
 
-def validar_rango_horario(apertura, cierre):
+def validar_rango_horario(apertura, cierre, dia=""):
+    """dia es opcional: con una semana de horarios indica cuál está mal."""
     if apertura >= cierre:
-        raise ValidacionError("La hora de apertura debe ser anterior a la de cierre")
+        prefijo = f"{dia}: " if dia else ""
+        raise ValidacionError(f"{prefijo}La hora de apertura debe ser anterior a la de cierre")
 
 
 # ------------------------------------------------------------- opciones
