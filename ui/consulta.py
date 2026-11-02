@@ -32,7 +32,7 @@ class PestaniaConsulta(PestaniaBase):
 
         botones = ttk.Frame(self)
         botones.pack(anchor="w", pady=10)
-        ttk.Button(botones, text="Buscar", command=self.refrescar).pack(side="left", padx=5)
+        ttk.Button(botones, text="Buscar", command=self.refrescar, style="Accent.TButton").pack(side="left", padx=5)
         ttk.Button(botones, text="Limpiar", command=self.limpiar).pack(side="left", padx=5)
         self.resumen = ttk.Label(botones, text="")
         self.resumen.pack(side="left", padx=20)

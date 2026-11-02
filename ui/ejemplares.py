@@ -28,7 +28,7 @@ class PestaniaEjemplares(PestaniaBase):
         self.crear_combo(formulario, 'estado_fisico', "Estado físico:", 3,
                          lambda: [(estado, estado) for estado in EstadoFisico.TODOS])
         ttk.Label(formulario, text="Al editar solo se cambia el estado físico.",
-                  foreground="gray").grid(row=8, column=1, sticky="w", padx=5)
+                  style="Muted.TLabel").grid(row=8, column=1, sticky="w", padx=5)
 
         self.crear_botones(self, [("Dar de baja", self.dar_de_baja)]).pack(anchor="w", pady=10)
         marco, self.tabla = self.crear_tabla(self, [

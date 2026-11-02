@@ -26,6 +26,7 @@ from ui.reservas import PestaniaReservas
 from ui.remitos import PestaniaRemitos
 from ui.consulta import PestaniaConsulta
 from ui.reportes import PestaniaReportes
+from ui.estilos import aplicar_estilos
 
 
 def main():
@@ -40,13 +41,15 @@ def main():
     ancho = min(1380, ventana.winfo_screenwidth())
     alto = min(960, ventana.winfo_screenheight() - 80)
     ventana.geometry(f"{ancho}x{alto}+0+0")
-    ttk.Style().theme_use("clam")
+    aplicar_estilos(ventana)
 
     # Empleado actual: no hay login, así que se elige acá quién opera.
     # Lo usan las operaciones que registran quién las hizo (préstamos, reservas, devoluciones y remitos).
-    marco_superior = ttk.Frame(ventana, padding=10)
+    marco_superior = ttk.Frame(ventana, padding=(16, 10), style="Header.TFrame")
     marco_superior.pack(fill="x")
-    ttk.Label(marco_superior, text="Empleado actual:").pack(side="left")
+    ttk.Label(marco_superior, text="Biblioteca · Préstamos interbibliotecarios",
+              style="HeaderTitle.TLabel").pack(side="left", padx=(0, 30))
+    ttk.Label(marco_superior, text="Empleado actual:", style="Header.TLabel").pack(side="left")
     combo_empleado = ttk.Combobox(marco_superior, state="readonly", width=40)
     combo_empleado.pack(side="left", padx=5)
 
@@ -72,7 +75,7 @@ def main():
     combo_empleado.bind("<FocusIn>", lambda evento: cargar_empleados())
 
     notebook = ttk.Notebook(ventana)
-    notebook.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+    notebook.pack(fill="both", expand=True, padx=10, pady=(4, 10))
     pestanias = [
         (PestaniaSedes(notebook), "Sedes"),
         (PestaniaEmpleados(notebook), "Empleados"),

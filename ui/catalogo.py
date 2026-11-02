@@ -9,6 +9,7 @@ from dao.autor_dao import AutorDAO
 from dao.categoria_dao import CategoriaDAO
 from dao.libro_dao import LibroDAO
 from ui.base import PestaniaBase
+from ui.estilos import estilo_listbox
 from validadores import validar_isbn, validar_texto_con_letras, validar_anio_edicion, validar_solo_letras
 
 
@@ -69,6 +70,7 @@ class PestaniaLibros(PestaniaBase):
         ttk.Label(marco_autores, text="Autores (clic para marcar uno o varios):").pack(anchor="w")
         self.lista_autores = tk.Listbox(marco_autores, selectmode="multiple", height=8, width=35,
                                         exportselection=False)
+        estilo_listbox(self.lista_autores)
         self.lista_autores.pack()
         self.lista_autores.bind("<FocusIn>", lambda evento: self.recargar_autores())
 

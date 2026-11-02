@@ -24,11 +24,11 @@ class PestaniaReservas(PestaniaBase):
         self.crear_combo(formulario, 'sede_retiro', "Sede de retiro:", 2, SedeDAO().opciones)
         ttk.Label(formulario, text="Si hay un ejemplar libre en esa sede se aparta en el acto (2 días para "
                                    "retirarlo); si no, la reserva espera hasta 45 días.",
-                  foreground="gray").grid(row=6, column=1, sticky="w", padx=5)
+                  style="Muted.TLabel").grid(row=6, column=1, sticky="w", padx=5)
 
         botones = ttk.Frame(self)
         botones.pack(anchor="w", pady=10)
-        ttk.Button(botones, text="Reservar", command=self.reservar).pack(side="left", padx=5)
+        ttk.Button(botones, text="Reservar", command=self.reservar, style="Accent.TButton").pack(side="left", padx=5)
         ttk.Button(botones, text="Retirar seleccionada", command=self.retirar).pack(side="left", padx=5)
         ttk.Button(botones, text="Cancelar seleccionada", command=self.cancelar).pack(side="left", padx=5)
         ttk.Button(botones, text="Procesar vencimientos", command=self.procesar).pack(side="left", padx=5)

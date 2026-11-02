@@ -20,7 +20,7 @@ class PestaniaReportes(PestaniaBase):
 
         botones = ttk.Frame(self)
         botones.pack(anchor="w", pady=10)
-        ttk.Button(botones, text="Generar", command=self.generar).pack(side="left", padx=5)
+        ttk.Button(botones, text="Generar", command=self.generar, style="Accent.TButton").pack(side="left", padx=5)
         self.resumen = ttk.Label(botones, text="Elija un reporte")
         self.resumen.pack(side="left", padx=20)
 

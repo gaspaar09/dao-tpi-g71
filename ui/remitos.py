@@ -9,6 +9,7 @@ from constantes import TipoIncidencia
 from dao.remito_dao import RemitoDAO
 from dao.sede_dao import SedeDAO
 from ui.base import PestaniaBase
+from ui.estilos import estilo_listbox
 from validadores import validar_texto, validar_texto_opcional, validar_fecha, validar_fecha_no_futura
 
 CAMPOS_INCIDENCIA = ['tipo_incidencia', 'fecha', 'descripcion']
@@ -32,7 +33,7 @@ class PestaniaRemitos(PestaniaBase):
         # --- Nuevo remito de ida
         bloque = ttk.Frame(superior)
         bloque.pack(side="left", anchor="n")
-        ttk.Label(bloque, text="NUEVO REMITO DE IDA").pack(anchor="w", padx=5)
+        ttk.Label(bloque, text="NUEVO REMITO DE IDA", style="Title.TLabel").pack(anchor="w", padx=5)
         nuevo = ttk.Frame(bloque)
         nuevo.pack(anchor="w")
         self.crear_combo(nuevo, 'sede_origen', "Sede de origen:", 0, SedeDAO().opciones, ancho=25)
@@ -45,9 +46,10 @@ class PestaniaRemitos(PestaniaBase):
         # Igual que los autores de un libro: Listbox de selección múltiple
         self.lista_prestamos = tk.Listbox(nuevo, selectmode="multiple", height=4, width=60,
                                           exportselection=False)
+        estilo_listbox(self.lista_prestamos)
         self.lista_prestamos.grid(row=5, column=0, columnspan=2, sticky="w", padx=5)
         self.lista_prestamos.bind("<FocusIn>", lambda evento: self.recargar_prestamos())
-        ttk.Button(nuevo, text="Crear remito", command=self.crear_remito).grid(row=6, column=0, sticky="w",
+        ttk.Button(nuevo, text="Crear remito", command=self.crear_remito, style="Accent.TButton").grid(row=6, column=0, sticky="w",
                                                                                padx=5, pady=5)
         # Una devolución cuyo remito se canceló necesita uno nuevo
         self.crear_combo(nuevo, 'devolucion', "Devolución sin remito:", 4, self.dao.devoluciones_pendientes,
@@ -58,7 +60,7 @@ class PestaniaRemitos(PestaniaBase):
         # --- Incidencia del remito elegido
         bloque = ttk.Frame(superior)
         bloque.pack(side="left", anchor="n", padx=20)
-        ttk.Label(bloque, text="INCIDENCIA DEL REMITO ELEGIDO").pack(anchor="w", padx=5)
+        ttk.Label(bloque, text="INCIDENCIA DEL REMITO ELEGIDO", style="Title.TLabel").pack(anchor="w", padx=5)
         incidencia = ttk.Frame(bloque)
         incidencia.pack(anchor="w")
         self.crear_combo(incidencia, 'tipo_incidencia', "Tipo:", 0,
@@ -76,11 +78,11 @@ class PestaniaRemitos(PestaniaBase):
                          lambda v: validar_texto_opcional(v, "observación", LARGO_OBSERVACION_MOVIMIENTO), ancho=50)
         botones = ttk.Frame(acciones)
         botones.grid(row=0, column=2, sticky="w")
-        ttk.Button(botones, text="Avanzar estado", command=self.avanzar).pack(side="left", padx=5)
+        ttk.Button(botones, text="Avanzar estado", command=self.avanzar, style="Accent.TButton").pack(side="left", padx=5)
         ttk.Button(botones, text="Cancelar", command=self.cancelar).pack(side="left", padx=5)
         ttk.Button(botones, text="Dar por extraviado", command=self.extraviar).pack(side="left", padx=5)
         ttk.Label(acciones, text="La observación es obligatoria para cancelar o dar por extraviado.",
-                  foreground="gray").grid(row=2, column=1, sticky="w", padx=5)
+                  style="Muted.TLabel").grid(row=2, column=1, sticky="w", padx=5)
 
         marco, self.tabla = self.crear_tabla(self, [
             ('nro_remito', "N° remito", 90), ('tipo', "Tipo", 90), ('origen', "Origen", 110),

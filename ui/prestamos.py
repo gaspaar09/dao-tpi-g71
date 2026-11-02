@@ -35,7 +35,7 @@ class PestaniaPrestamos(PestaniaBase):
         self.crear_combo(formulario, 'ejemplar', "Ejemplar:", 4,
                          lambda: EjemplarDAO().opciones_disponibles(self.valor('sede_origen')), ancho=45)
         ttk.Label(formulario, text="En un préstamo local la sede de destino es la misma que la de origen.",
-                  foreground="gray").grid(row=10, column=1, sticky="w", padx=5)
+                  style="Muted.TLabel").grid(row=10, column=1, sticky="w", padx=5)
 
         # Al elegir una opción se acomoda el formulario. <<ComboboxSelected>> no
         # está en los apuntes; con <FocusOut> el cambio recién se vería al salir
@@ -45,7 +45,8 @@ class PestaniaPrestamos(PestaniaBase):
 
         botones = ttk.Frame(self)
         botones.pack(anchor="w", pady=10)
-        self.boton_guardar = ttk.Button(botones, text="Registrar solicitud", command=self.registrar)
+        self.boton_guardar = ttk.Button(botones, text="Registrar solicitud", command=self.registrar,
+                                        style="Accent.TButton")
         self.boton_guardar.pack(side="left", padx=5)
         ttk.Button(botones, text="Aprobar seleccionado", command=self.aprobar).pack(side="left", padx=5)
         ttk.Button(botones, text="Cancelar seleccionado", command=self.cancelar).pack(side="left", padx=5)
@@ -60,7 +61,8 @@ class PestaniaPrestamos(PestaniaBase):
         marco.pack(fill="both", expand=True)
 
         # --- Devolución del préstamo seleccionado en la tabla
-        ttk.Label(self, text="DEVOLUCIÓN DEL PRÉSTAMO SELECCIONADO").pack(anchor="w", pady=(10, 0), padx=5)
+        ttk.Label(self, text="DEVOLUCIÓN DEL PRÉSTAMO SELECCIONADO", style="Title.TLabel").pack(
+            anchor="w", pady=(10, 0), padx=5)
         devolucion = ttk.Frame(self)
         devolucion.pack(fill="x")
         self.crear_campo_fecha(devolucion, 'fecha_devolucion', "Fecha (elegir o dd/mm/aaaa):", 0,
@@ -71,10 +73,10 @@ class PestaniaPrestamos(PestaniaBase):
         self.crear_campo(devolucion, 'observaciones', "Observaciones:", 2,
                          lambda v: validar_texto_opcional(v, "observaciones", LARGO_OBSERVACIONES), ancho=50)
         ttk.Label(devolucion, text="Obligatorias si el ejemplar volvió dañado o destruido.",
-                  foreground="gray").grid(row=6, column=1, sticky="w", padx=5)
+                  style="Muted.TLabel").grid(row=6, column=1, sticky="w", padx=5)
         botones = ttk.Frame(devolucion)
         botones.grid(row=0, column=2, rowspan=3, sticky="n", padx=20)
-        ttk.Button(botones, text="Registrar devolución", command=self.devolver).pack(fill="x", pady=2)
+        ttk.Button(botones, text="Registrar devolución", command=self.devolver, style="Accent.TButton").pack(fill="x", pady=2)
         ttk.Button(botones, text="Marcar multa pagada", command=self.pagar_multa).pack(fill="x", pady=2)
         self.refrescar()
 

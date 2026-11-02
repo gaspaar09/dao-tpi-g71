@@ -10,6 +10,7 @@ from datetime import date, timedelta
 from tkinter import ttk, messagebox
 
 from excepciones import ValidacionError, ReglaNegocioError
+from ui.estilos import configurar_tags_tabla, tags_de_fila
 from validadores import solo_digitos
 
 
@@ -47,7 +48,7 @@ class PestaniaBase(ttk.Frame):
         if numerico:
             vcmd = self.register(self.solo_numeros)
             entry.config(validate="key", validatecommand=(vcmd, "%P"))
-        error = ttk.Label(contenedor, text="", foreground="red")
+        error = ttk.Label(contenedor, text="", style="Error.TLabel")
         error.grid(row=fila * 2 + 1, column=1, sticky="w", padx=5)
         self.campos[nombre] = {'widget': entry, 'error': error, 'validador': validador, 'etiqueta': etiqueta}
         # Al salir del campo se avisa el error sin esperar a guardar
@@ -72,7 +73,7 @@ class PestaniaBase(ttk.Frame):
         vcmd = self.register(self.caracteres_de_fecha)
         combo.config(validate="key", validatecommand=(vcmd, "%P"))
         combo.set(fechas[0])  # por defecto, hoy
-        error = ttk.Label(contenedor, text="", foreground="red")
+        error = ttk.Label(contenedor, text="", style="Error.TLabel")
         error.grid(row=fila * 2 + 1, column=1, sticky="w", padx=5)
         self.campos[nombre] = {'widget': combo, 'error': error, 'validador': validador, 'etiqueta': etiqueta}
         combo.bind("<FocusOut>", lambda evento: self.validar_campo(nombre))
@@ -87,7 +88,7 @@ class PestaniaBase(ttk.Frame):
         ttk.Label(contenedor, text=etiqueta).grid(row=fila * 2, column=0, sticky="w", padx=5, pady=(5, 0))
         combo = ttk.Combobox(contenedor, state="readonly", width=ancho)
         combo.grid(row=fila * 2, column=1, sticky="w", padx=5, pady=(5, 0))
-        error = ttk.Label(contenedor, text="", foreground="red")
+        error = ttk.Label(contenedor, text="", style="Error.TLabel")
         error.grid(row=fila * 2 + 1, column=1, sticky="w", padx=5)
         self.campos[nombre] = {'widget': combo, 'error': error, 'validador': None, 'etiqueta': etiqueta,
                                'cargar': cargar_opciones}
@@ -183,14 +184,16 @@ class PestaniaBase(ttk.Frame):
         tabla.pack(side="left", fill="both", expand=True)
         barra.pack(side="right", fill="y")
         tabla.columnas = [c[0] for c in columnas]
+        configurar_tags_tabla(tabla)
         return marco, tabla
 
     def cargar_tabla(self, tabla, filas):
         """Reemplaza el contenido. Cada fila es un diccionario del DAO con su 'id'."""
         for item in tabla.get_children():
             tabla.delete(item)
-        for fila in filas:
-            tabla.insert("", tk.END, iid=str(fila['id']), values=[fila[clave] for clave in tabla.columnas])
+        for posicion, fila in enumerate(filas):
+            tabla.insert("", tk.END, iid=str(fila['id']), values=[fila[clave] for clave in tabla.columnas],
+                         tags=tags_de_fila(fila, posicion))
 
     def id_seleccionado(self, tabla, aviso="Seleccione una fila de la tabla"):
         """Como curselection() del Listbox: devuelve el id de la fila elegida."""
@@ -249,7 +252,7 @@ class PestaniaBase(ttk.Frame):
     def crear_botones(self, contenedor, extras=None):
         """Botones comunes (Guardar, Editar seleccionado, Limpiar) más los propios."""
         marco = ttk.Frame(contenedor)
-        self.boton_guardar = ttk.Button(marco, text="Guardar", command=self.guardar)
+        self.boton_guardar = ttk.Button(marco, text="Guardar", command=self.guardar, style="Accent.TButton")
         self.boton_guardar.pack(side="left", padx=5)
         ttk.Button(marco, text="Editar seleccionado", command=self.editar_seleccionado).pack(side="left", padx=5)
         ttk.Button(marco, text="Limpiar", command=self.limpiar).pack(side="left", padx=5)
