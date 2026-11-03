@@ -69,7 +69,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 | isbn (ISBN o ISSN) | Tras quitar guiones y espacios debe tener 8 (ISSN), 10 o 13 caracteres; todos dígitos salvo que ISSN e ISBN-10 pueden terminar en `X`; único. Validar el dígito verificador es un plus |
 | titulo | Obligatorio, hasta 150, con al menos una letra (texto libre: admite signos) |
 | editorial | Obligatoria, hasta 80, con al menos una letra |
-| idioma | Obligatorio, solo letras, 2–30 |
+| idioma | ∈ `Idioma` (desplegable) |
 | anio_edicion | Entero entre 1450 y el año actual |
 | tipo_material | ∈ `TipoMaterial` |
 | autores | Al menos uno, todos existentes |

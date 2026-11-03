@@ -102,7 +102,7 @@ class TestLibros:
         casos = [("123", "Sudamericana", "Español", "título"),
                  ("Rayuela", "999", "Español", "editorial"),
                  ("Rayuela", "Sudamericana", "123", "idioma"),
-                 ("Rayuela", "Sudamericana", "Esp4ñol", "idioma")]
+                 ("Rayuela", "Sudamericana", "dgh", "idioma")]
         for titulo, editorial, idioma, campo in casos:
             with pytest.raises(ValidacionError, match=campo):
                 libro_dao.crear("9789500700011", titulo, editorial, "1963", idioma,

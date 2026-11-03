@@ -4,8 +4,8 @@ import tkinter as tk
 # Los widgets ttk se toman de ttkbootstrap: son los mismos, con los temas modernos
 import ttkbootstrap as ttk
 
-from config import LARGO_TITULO, LARGO_EDITORIAL, LARGO_IDIOMA, LARGO_NOMBRE_PERSONA
-from constantes import TipoMaterial
+from config import LARGO_TITULO, LARGO_EDITORIAL, LARGO_NOMBRE_PERSONA
+from constantes import TipoMaterial, Idioma
 from dao.autor_dao import AutorDAO
 from dao.categoria_dao import CategoriaDAO
 from dao.libro_dao import LibroDAO
@@ -69,7 +69,7 @@ class PestaniaLibros(PestaniaBase):
         self.crear_campo(datos, 'editorial', "Editorial:", 2,
                          lambda v: validar_texto_con_letras(v, "editorial", LARGO_EDITORIAL))
         self.crear_campo(datos, 'anio', "Año de edición:", 3, validar_anio_edicion, numerico=True, ancho=10)
-        self.crear_campo(datos, 'idioma', "Idioma:", 4, lambda v: validar_solo_letras(v, "idioma", 2, LARGO_IDIOMA))
+        self.crear_combo(datos, 'idioma', "Idioma:", 4, lambda: [(idioma, idioma) for idioma in Idioma.TODOS])
         self.crear_combo(datos, 'tipo_material', "Tipo de material:", 5,
                          lambda: [(tipo, tipo) for tipo in TipoMaterial.TODOS])
         self.crear_combo(datos, 'categoria', "Categoría:", 6, CategoriaDAO().opciones)

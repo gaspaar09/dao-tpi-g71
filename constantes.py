@@ -27,6 +27,18 @@ class TipoMaterial:
     TODOS = [LIBRO, REVISTA, MATERIAL_CONSULTA]
 
 
+class Idioma:
+    # Lista cerrada: el idioma se elige de un desplegable, así no se carga uno inexistente.
+    ESPANOL = "Español"
+    INGLES = "Inglés"
+    PORTUGUES = "Portugués"
+    FRANCES = "Francés"
+    ITALIANO = "Italiano"
+    ALEMAN = "Alemán"
+    OTRO = "Otro"
+    TODOS = [ESPANOL, INGLES, PORTUGUES, FRANCES, ITALIANO, ALEMAN, OTRO]
+
+
 class EstadoEjemplar:
     DISPONIBLE = "DISPONIBLE"
     RESERVADO = "RESERVADO"
