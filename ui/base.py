@@ -35,6 +35,7 @@ RELLENO_COLUMNA = 20
 # Íconos de la columna Acciones de los ABM, y el espacio entre uno y otro
 ICONO_EDITAR = "✏"
 ICONO_BAJA = "🗑"
+ICONO_ELIMINAR = "✖"
 SEPARACION_ICONOS = "     "
 
 

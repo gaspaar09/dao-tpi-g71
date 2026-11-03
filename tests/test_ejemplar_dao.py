@@ -1,11 +1,13 @@
 import pytest
 
-from constantes import DiaSemana, EstadoEjemplar, EstadoFisico, TipoMaterial
+from constantes import DiaSemana, EstadoEjemplar, EstadoFisico, TipoMaterial, TipoPrestamo
 from dao.autor_dao import AutorDAO
 from dao.categoria_dao import CategoriaDAO
 from dao.ejemplar_dao import EjemplarDAO
 from dao.libro_dao import LibroDAO
+from dao.prestamo_dao import PrestamoDAO
 from dao.sede_dao import SedeDAO
+from dao.socio_dao import SocioDAO
 from database import obtener_session
 from excepciones import ValidacionError, ReglaNegocioError
 from modelos.ejemplar import Ejemplar
@@ -84,3 +86,27 @@ class TestModificarYBajaEjemplar:
                 session.query(Ejemplar).filter_by(id=ejemplar_id).first().estado = estado
             with pytest.raises(ReglaNegocioError, match="No se puede dar de baja"):
                 dao.dar_de_baja(ejemplar_id)
+
+
+class TestEliminarEjemplar:
+    def test_elimina_si_no_tiene_historial(self):
+        libro_id, sede_id = preparar()
+        dao.crear("EJ-001", libro_id, sede_id, EstadoFisico.NUEVO)
+        ejemplar_id = dao.listar()[0]['id']
+        assert not dao.tiene_historial(ejemplar_id)
+        dao.eliminar(ejemplar_id)
+        assert dao.listar() == []
+        # El código queda libre para cargarlo de nuevo
+        dao.crear("EJ-001", libro_id, sede_id, EstadoFisico.NUEVO)
+
+    def test_no_elimina_si_tiene_historial(self):
+        libro_id, sede_id = preparar()
+        dao.crear("EJ-001", libro_id, sede_id, EstadoFisico.NUEVO)
+        ejemplar_id = dao.listar()[0]['id']
+        SocioDAO().crear("30111222", "Ana", "Martínez", "", "54", "3515550001")
+        socio_id = SocioDAO().opciones()[0][0]
+        PrestamoDAO().solicitar(TipoPrestamo.LOCAL, socio_id, ejemplar_id, sede_id, sede_id)
+        assert dao.tiene_historial(ejemplar_id)
+        with pytest.raises(ReglaNegocioError, match="tiene historial"):
+            dao.eliminar(ejemplar_id)
+        assert len(dao.listar()) == 1

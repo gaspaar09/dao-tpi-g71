@@ -6,6 +6,8 @@ from database import obtener_session
 from excepciones import ReglaNegocioError
 from modelos.catalogo import Libro
 from modelos.ejemplar import Ejemplar
+from modelos.remito import ItemRemito
+from modelos.reserva import Reserva
 from modelos.sede import Sede
 from validadores import validar_codigo_inventario, validar_opcion
 
@@ -45,6 +47,27 @@ class EjemplarDAO:
             if ejemplar.estado in ESTADOS_SIN_BAJA:
                 raise ReglaNegocioError(f"No se puede dar de baja un ejemplar {ejemplar.estado}")
             ejemplar.cambiar_estado(EstadoEjemplar.BAJA)
+
+    def tiene_historial(self, id):
+        with obtener_session() as session:
+            ejemplar = buscar_por_id(session, Ejemplar, id, "el ejemplar")
+            return self.historial_en_sesion(session, ejemplar)
+
+    def historial_en_sesion(self, session, ejemplar):
+        """Préstamos, remitos o reservas que lo nombran: borrarlo los dejaría sin ejemplar."""
+        return (len(ejemplar.prestamos) > 0
+                or session.query(ItemRemito).filter_by(ejemplar_id=ejemplar.id).first() is not None
+                or session.query(Reserva).filter_by(ejemplar_id=ejemplar.id).first() is not None)
+
+    def eliminar(self, id):
+        """Borra la fila solo si el ejemplar nunca se usó (por ejemplo, cargado por error).
+        Con historial se da de baja, para no alterar préstamos, multas ni reportes."""
+        with obtener_session() as session:
+            ejemplar = buscar_por_id(session, Ejemplar, id, "el ejemplar")
+            if self.historial_en_sesion(session, ejemplar):
+                raise ReglaNegocioError(f"No se puede eliminar: {ejemplar.codigo_inventario} tiene historial. "
+                                        "Puede darlo de baja")
+            session.delete(ejemplar)
 
     def opciones_disponibles(self, sede_id):
         """Ejemplares DISPONIBLE de una sede, para elegir en un préstamo."""

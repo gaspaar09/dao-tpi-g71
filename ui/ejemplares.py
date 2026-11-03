@@ -1,10 +1,12 @@
 """Pestaña de Ejemplares (copias físicas de los libros)."""
 
+from tkinter import messagebox
+
 from constantes import EstadoFisico
 from dao.ejemplar_dao import EjemplarDAO
 from dao.libro_dao import LibroDAO
 from dao.sede_dao import SedeDAO
-from ui.base import PestaniaBase, ICONO_EDITAR, ICONO_BAJA
+from ui.base import PestaniaBase, ICONO_EDITAR, ICONO_BAJA, ICONO_ELIMINAR
 from validadores import validar_codigo_inventario
 
 CAMPOS = ['codigo_inventario', 'libro', 'sede', 'estado_fisico']
@@ -26,7 +28,8 @@ class PestaniaEjemplares(PestaniaBase):
             ('codigo_inventario', "Código", 120), ('libro', "Libro", 300), ('sede', "Sede", 190),
             ('estado', "Estado", 120), ('estado_fisico', "Estado físico", 120)],
             doble_clic=self.editar_seleccionado,
-            iconos=[(ICONO_EDITAR, self.editar_seleccionado), (ICONO_BAJA, self.dar_de_baja)]).pack(fill="both", expand=True)
+            iconos=[(ICONO_EDITAR, self.editar_seleccionado), (ICONO_BAJA, self.dar_de_baja),
+                   (ICONO_ELIMINAR, self.eliminar)]).pack(fill="both", expand=True)
         self.refrescar()
 
     def armar_formulario(self, contenedor):
@@ -64,6 +67,19 @@ class PestaniaEjemplares(PestaniaBase):
     def dar_de_baja(self):
         self.accion_sobre_seleccion(self.dao.dar_de_baja, "¿Dar de baja el ejemplar seleccionado?",
                                     "Ejemplar dado de baja")
+
+    def eliminar(self):
+        id = self.id_seleccionado(self.tabla)
+        if id is None:
+            return
+        # Con historial no se borra: se ofrece la baja, que conserva préstamos y remitos
+        if self.dao.tiene_historial(id):
+            if messagebox.askyesno("No se puede eliminar",
+                                   "Este ejemplar tiene historial (préstamos, remitos o reservas) "
+                                   "y borrarlo alteraría las multas y los reportes.\n\n¿Darlo de baja?"):
+                self.ejecutar(lambda: self.dao.dar_de_baja(id), "Ejemplar dado de baja")
+        elif messagebox.askyesno("Confirmar", "¿Eliminar el ejemplar seleccionado?"):
+            self.ejecutar(lambda: self.dao.eliminar(id), "Ejemplar eliminado")
 
     def refrescar(self):
         self.filas = self.dao.listar()

@@ -80,7 +80,7 @@ Todo se implementa con lo visto en clase (ver `CLAUDE.md`): métodos de `str`, `
 *Decidido:* el campo `isbn` acepta ISBN (10 o 13) e ISSN (8), porque el catálogo incluye revistas y otros materiales de consulta.
 
 ### Ejemplar
-`codigo_inventario` obligatorio, único, 3–20 caracteres entre mayúsculas, dígitos y guiones. `libro` y `sede` existentes y la sede ACTIVA. Estado inicial DISPONIBLE. `estado_fisico` ∈ `EstadoFisico`. No dar de baja un ejemplar PRESTADO, RESERVADO o EN_TRANSITO.
+`codigo_inventario` obligatorio, único, 3–20 caracteres entre mayúsculas, dígitos y guiones. `libro` y `sede` existentes y la sede ACTIVA. Estado inicial DISPONIBLE. `estado_fisico` ∈ `EstadoFisico`. No dar de baja un ejemplar PRESTADO, RESERVADO o EN_TRANSITO. Eliminar (borrar la fila) solo si no tiene historial (préstamos, ítems de remito o reservas); si tiene, se rechaza y se ofrece la baja.
 
 ### Préstamo
 - Socio existente y ACTIVO. Ejemplar existente y DISPONIBLE.

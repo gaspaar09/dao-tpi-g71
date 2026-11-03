@@ -3,3 +3,4 @@ __pycache__/
 *.db
 .pytest_cache/
 .DS_Store
+RECORRIDO_E2E.md
